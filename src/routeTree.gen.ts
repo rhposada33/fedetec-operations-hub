@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppTecnicosRouteImport } from './routes/_app.tecnicos'
 import { Route as AppServiciosRouteImport } from './routes/_app.servicios'
 
 const AppRoute = AppRouteImport.update({
@@ -22,6 +23,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTecnicosRoute = AppTecnicosRouteImport.update({
+  id: '/tecnicos',
+  path: '/tecnicos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppServiciosRoute = AppServiciosRouteImport.update({
   id: '/servicios',
   path: '/servicios',
@@ -31,23 +37,26 @@ const AppServiciosRoute = AppServiciosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/servicios': typeof AppServiciosRoute
+  '/tecnicos': typeof AppTecnicosRoute
 }
 export interface FileRoutesByTo {
   '/servicios': typeof AppServiciosRoute
+  '/tecnicos': typeof AppTecnicosRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_app/servicios': typeof AppServiciosRoute
+  '/_app/tecnicos': typeof AppTecnicosRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/servicios'
+  fullPaths: '/' | '/servicios' | '/tecnicos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/servicios' | '/'
-  id: '__root__' | '/_app' | '/_app/servicios' | '/_app/'
+  to: '/servicios' | '/tecnicos' | '/'
+  id: '__root__' | '/_app' | '/_app/servicios' | '/_app/tecnicos' | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -70,6 +79,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/tecnicos': {
+      id: '/_app/tecnicos'
+      path: '/tecnicos'
+      fullPath: '/tecnicos'
+      preLoaderRoute: typeof AppTecnicosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/servicios': {
       id: '/_app/servicios'
       path: '/servicios'
@@ -82,11 +98,13 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppServiciosRoute: typeof AppServiciosRoute
+  AppTecnicosRoute: typeof AppTecnicosRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppServiciosRoute: AppServiciosRoute,
+  AppTecnicosRoute: AppTecnicosRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
