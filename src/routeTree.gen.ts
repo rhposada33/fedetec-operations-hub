@@ -14,6 +14,7 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTecnicosRouteImport } from './routes/_app.tecnicos'
 import { Route as AppServiciosRouteImport } from './routes/_app.servicios'
 import { Route as AppPagosRouteImport } from './routes/_app.pagos'
+import { Route as AppNotificacionesRouteImport } from './routes/_app.notificaciones'
 import { Route as AppMapaRouteImport } from './routes/_app.mapa'
 import { Route as AppEvidenciasRouteImport } from './routes/_app.evidencias'
 import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
@@ -43,6 +44,11 @@ const AppPagosRoute = AppPagosRouteImport.update({
   path: '/pagos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNotificacionesRoute = AppNotificacionesRouteImport.update({
+  id: '/notificaciones',
+  path: '/notificaciones',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMapaRoute = AppMapaRouteImport.update({
   id: '/mapa',
   path: '/mapa',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof AppEmpresasRoute
   '/evidencias': typeof AppEvidenciasRoute
   '/mapa': typeof AppMapaRoute
+  '/notificaciones': typeof AppNotificacionesRoute
   '/pagos': typeof AppPagosRoute
   '/servicios': typeof AppServiciosRoute
   '/tecnicos': typeof AppTecnicosRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof AppEmpresasRoute
   '/evidencias': typeof AppEvidenciasRoute
   '/mapa': typeof AppMapaRoute
+  '/notificaciones': typeof AppNotificacionesRoute
   '/pagos': typeof AppPagosRoute
   '/servicios': typeof AppServiciosRoute
   '/tecnicos': typeof AppTecnicosRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/_app/empresas': typeof AppEmpresasRoute
   '/_app/evidencias': typeof AppEvidenciasRoute
   '/_app/mapa': typeof AppMapaRoute
+  '/_app/notificaciones': typeof AppNotificacionesRoute
   '/_app/pagos': typeof AppPagosRoute
   '/_app/servicios': typeof AppServiciosRoute
   '/_app/tecnicos': typeof AppTecnicosRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/evidencias'
     | '/mapa'
+    | '/notificaciones'
     | '/pagos'
     | '/servicios'
     | '/tecnicos'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/evidencias'
     | '/mapa'
+    | '/notificaciones'
     | '/pagos'
     | '/servicios'
     | '/tecnicos'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_app/empresas'
     | '/_app/evidencias'
     | '/_app/mapa'
+    | '/_app/notificaciones'
     | '/_app/pagos'
     | '/_app/servicios'
     | '/_app/tecnicos'
@@ -171,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPagosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/notificaciones': {
+      id: '/_app/notificaciones'
+      path: '/notificaciones'
+      fullPath: '/notificaciones'
+      preLoaderRoute: typeof AppNotificacionesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/mapa': {
       id: '/_app/mapa'
       path: '/mapa'
@@ -207,6 +226,7 @@ interface AppRouteChildren {
   AppEmpresasRoute: typeof AppEmpresasRoute
   AppEvidenciasRoute: typeof AppEvidenciasRoute
   AppMapaRoute: typeof AppMapaRoute
+  AppNotificacionesRoute: typeof AppNotificacionesRoute
   AppPagosRoute: typeof AppPagosRoute
   AppServiciosRoute: typeof AppServiciosRoute
   AppTecnicosRoute: typeof AppTecnicosRoute
@@ -218,6 +238,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEmpresasRoute: AppEmpresasRoute,
   AppEvidenciasRoute: AppEvidenciasRoute,
   AppMapaRoute: AppMapaRoute,
+  AppNotificacionesRoute: AppNotificacionesRoute,
   AppPagosRoute: AppPagosRoute,
   AppServiciosRoute: AppServiciosRoute,
   AppTecnicosRoute: AppTecnicosRoute,
