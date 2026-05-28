@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTecnicosRouteImport } from './routes/_app.tecnicos'
 import { Route as AppServiciosRouteImport } from './routes/_app.servicios'
+import { Route as AppPagosRouteImport } from './routes/_app.pagos'
 import { Route as AppEvidenciasRouteImport } from './routes/_app.evidencias'
 import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
 
@@ -35,6 +36,11 @@ const AppServiciosRoute = AppServiciosRouteImport.update({
   path: '/servicios',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPagosRoute = AppPagosRouteImport.update({
+  id: '/pagos',
+  path: '/pagos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEvidenciasRoute = AppEvidenciasRouteImport.update({
   id: '/evidencias',
   path: '/evidencias',
@@ -50,12 +56,14 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/empresas': typeof AppEmpresasRoute
   '/evidencias': typeof AppEvidenciasRoute
+  '/pagos': typeof AppPagosRoute
   '/servicios': typeof AppServiciosRoute
   '/tecnicos': typeof AppTecnicosRoute
 }
 export interface FileRoutesByTo {
   '/empresas': typeof AppEmpresasRoute
   '/evidencias': typeof AppEvidenciasRoute
+  '/pagos': typeof AppPagosRoute
   '/servicios': typeof AppServiciosRoute
   '/tecnicos': typeof AppTecnicosRoute
   '/': typeof AppIndexRoute
@@ -65,20 +73,28 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/empresas': typeof AppEmpresasRoute
   '/_app/evidencias': typeof AppEvidenciasRoute
+  '/_app/pagos': typeof AppPagosRoute
   '/_app/servicios': typeof AppServiciosRoute
   '/_app/tecnicos': typeof AppTecnicosRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/empresas' | '/evidencias' | '/servicios' | '/tecnicos'
+  fullPaths:
+    | '/'
+    | '/empresas'
+    | '/evidencias'
+    | '/pagos'
+    | '/servicios'
+    | '/tecnicos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/empresas' | '/evidencias' | '/servicios' | '/tecnicos' | '/'
+  to: '/empresas' | '/evidencias' | '/pagos' | '/servicios' | '/tecnicos' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/_app/empresas'
     | '/_app/evidencias'
+    | '/_app/pagos'
     | '/_app/servicios'
     | '/_app/tecnicos'
     | '/_app/'
@@ -118,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServiciosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pagos': {
+      id: '/_app/pagos'
+      path: '/pagos'
+      fullPath: '/pagos'
+      preLoaderRoute: typeof AppPagosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/evidencias': {
       id: '/_app/evidencias'
       path: '/evidencias'
@@ -138,6 +161,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppEmpresasRoute: typeof AppEmpresasRoute
   AppEvidenciasRoute: typeof AppEvidenciasRoute
+  AppPagosRoute: typeof AppPagosRoute
   AppServiciosRoute: typeof AppServiciosRoute
   AppTecnicosRoute: typeof AppTecnicosRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -146,6 +170,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppEmpresasRoute: AppEmpresasRoute,
   AppEvidenciasRoute: AppEvidenciasRoute,
+  AppPagosRoute: AppPagosRoute,
   AppServiciosRoute: AppServiciosRoute,
   AppTecnicosRoute: AppTecnicosRoute,
   AppIndexRoute: AppIndexRoute,
