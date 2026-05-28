@@ -17,6 +17,7 @@ import { Route as AppPagosRouteImport } from './routes/_app.pagos'
 import { Route as AppMapaRouteImport } from './routes/_app.mapa'
 import { Route as AppEvidenciasRouteImport } from './routes/_app.evidencias'
 import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
+import { Route as AppConfiguracionRouteImport } from './routes/_app.configuracion'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -57,9 +58,15 @@ const AppEmpresasRoute = AppEmpresasRouteImport.update({
   path: '/empresas',
   getParentRoute: () => AppRoute,
 } as any)
+const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/configuracion': typeof AppConfiguracionRoute
   '/empresas': typeof AppEmpresasRoute
   '/evidencias': typeof AppEvidenciasRoute
   '/mapa': typeof AppMapaRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/tecnicos': typeof AppTecnicosRoute
 }
 export interface FileRoutesByTo {
+  '/configuracion': typeof AppConfiguracionRoute
   '/empresas': typeof AppEmpresasRoute
   '/evidencias': typeof AppEvidenciasRoute
   '/mapa': typeof AppMapaRoute
@@ -79,6 +87,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/configuracion': typeof AppConfiguracionRoute
   '/_app/empresas': typeof AppEmpresasRoute
   '/_app/evidencias': typeof AppEvidenciasRoute
   '/_app/mapa': typeof AppMapaRoute
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/configuracion'
     | '/empresas'
     | '/evidencias'
     | '/mapa'
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/tecnicos'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/configuracion'
     | '/empresas'
     | '/evidencias'
     | '/mapa'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/configuracion'
     | '/_app/empresas'
     | '/_app/evidencias'
     | '/_app/mapa'
@@ -180,10 +192,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmpresasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/configuracion': {
+      id: '/_app/configuracion'
+      path: '/configuracion'
+      fullPath: '/configuracion'
+      preLoaderRoute: typeof AppConfiguracionRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppConfiguracionRoute: typeof AppConfiguracionRoute
   AppEmpresasRoute: typeof AppEmpresasRoute
   AppEvidenciasRoute: typeof AppEvidenciasRoute
   AppMapaRoute: typeof AppMapaRoute
@@ -194,6 +214,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppConfiguracionRoute: AppConfiguracionRoute,
   AppEmpresasRoute: AppEmpresasRoute,
   AppEvidenciasRoute: AppEvidenciasRoute,
   AppMapaRoute: AppMapaRoute,
