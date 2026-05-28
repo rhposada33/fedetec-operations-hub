@@ -1,4 +1,4 @@
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Bell, Moon, Sun, Search, Menu, ChevronRight, Settings, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { notifications } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth";
 
 const titleMap: Record<string, string> = {
   "/": "Dashboard",
@@ -30,9 +30,11 @@ const titleMap: Record<string, string> = {
 
 export function Topbar() {
   const { theme, toggle } = useTheme();
+  const auth = useAuth();
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [sheetOpen, setSheetOpen] = useState(false);
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = 0;
   const title = titleMap[pathname] ?? "Fedetec";
 
   return (
@@ -90,15 +92,9 @@ export function Topbar() {
             <span className="text-[10px] font-normal text-muted-foreground">{unread} nuevas</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {notifications.slice(0, 5).map((n) => (
-            <DropdownMenuItem key={n.id} className="flex items-start gap-2 py-2">
-              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-muted-foreground/40" : "bg-primary"}`} />
-              <div className="min-w-0">
-                <div className="truncate text-xs font-medium">{n.title}</div>
-                <div className="truncate text-[11px] text-muted-foreground">{n.desc}</div>
-              </div>
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuItem className="py-3 text-xs text-muted-foreground">
+            No hay endpoint de notificaciones disponible todavía.
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -106,21 +102,37 @@ export function Topbar() {
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 rounded-lg p-1 pr-2 transition hover:bg-accent">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">SC</AvatarFallback>
+              <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                SC
+              </AvatarFallback>
             </Avatar>
             <div className="hidden text-left text-xs leading-tight sm:block">
-              <div className="font-semibold">Sofía Cárdenas</div>
-              <div className="text-muted-foreground">Operations Lead</div>
+              <div className="font-semibold">{auth.user?.nombre_completo ?? "Usuario"}</div>
+              <div className="text-muted-foreground">
+                {auth.user?.roles.join(", ") || "Operación"}
+              </div>
             </div>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem><User className="mr-2 h-4 w-4" /> Perfil</DropdownMenuItem>
-          <DropdownMenuItem><Settings className="mr-2 h-4 w-4" /> Configuración</DropdownMenuItem>
+          <DropdownMenuItem>
+            <User className="mr-2 h-4 w-4" /> Perfil
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Settings className="mr-2 h-4 w-4" /> Configuración
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive"><LogOut className="mr-2 h-4 w-4" /> Cerrar sesión</DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive"
+            onClick={() => {
+              auth.logout();
+              navigate({ to: "/login" });
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" /> Cerrar sesión
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

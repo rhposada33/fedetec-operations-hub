@@ -9,6 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TecnicoRouteImport } from './routes/tecnico'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as EmpresaRouteImport } from './routes/empresa'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTecnicosRouteImport } from './routes/_app.tecnicos'
@@ -21,6 +24,21 @@ import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
 import { Route as AppConfiguracionRouteImport } from './routes/_app.configuracion'
 import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 
+const TecnicoRoute = TecnicoRouteImport.update({
+  id: '/tecnico',
+  path: '/tecnico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresaRoute = EmpresaRouteImport.update({
+  id: '/empresa',
+  path: '/empresa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -78,6 +96,9 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/empresa': typeof EmpresaRoute
+  '/login': typeof LoginRoute
+  '/tecnico': typeof TecnicoRoute
   '/analytics': typeof AppAnalyticsRoute
   '/configuracion': typeof AppConfiguracionRoute
   '/empresas': typeof AppEmpresasRoute
@@ -89,6 +110,9 @@ export interface FileRoutesByFullPath {
   '/tecnicos': typeof AppTecnicosRoute
 }
 export interface FileRoutesByTo {
+  '/empresa': typeof EmpresaRoute
+  '/login': typeof LoginRoute
+  '/tecnico': typeof TecnicoRoute
   '/analytics': typeof AppAnalyticsRoute
   '/configuracion': typeof AppConfiguracionRoute
   '/empresas': typeof AppEmpresasRoute
@@ -103,6 +127,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/empresa': typeof EmpresaRoute
+  '/login': typeof LoginRoute
+  '/tecnico': typeof TecnicoRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/configuracion': typeof AppConfiguracionRoute
   '/_app/empresas': typeof AppEmpresasRoute
@@ -118,6 +145,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/empresa'
+    | '/login'
+    | '/tecnico'
     | '/analytics'
     | '/configuracion'
     | '/empresas'
@@ -129,6 +159,9 @@ export interface FileRouteTypes {
     | '/tecnicos'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/empresa'
+    | '/login'
+    | '/tecnico'
     | '/analytics'
     | '/configuracion'
     | '/empresas'
@@ -142,6 +175,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/empresa'
+    | '/login'
+    | '/tecnico'
     | '/_app/analytics'
     | '/_app/configuracion'
     | '/_app/empresas'
@@ -156,10 +192,34 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  EmpresaRoute: typeof EmpresaRoute
+  LoginRoute: typeof LoginRoute
+  TecnicoRoute: typeof TecnicoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tecnico': {
+      id: '/tecnico'
+      path: '/tecnico'
+      fullPath: '/tecnico'
+      preLoaderRoute: typeof TecnicoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresa': {
+      id: '/empresa'
+      path: '/empresa'
+      fullPath: '/empresa'
+      preLoaderRoute: typeof EmpresaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -270,7 +330,20 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  EmpresaRoute: EmpresaRoute,
+  LoginRoute: LoginRoute,
+  TecnicoRoute: TecnicoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { AuthProvider } from "@/lib/auth";
 
 function NotFoundComponent() {
   return (
@@ -73,17 +74,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Fedetec Operations Hub is a modern SaaS admin dashboard for technical service management." },
+      {
+        name: "description",
+        content:
+          "Fedetec Operations Hub is a modern SaaS admin dashboard for technical service management.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Fedetec Operations Hub is a modern SaaS admin dashboard for technical service management." },
+      {
+        property: "og:description",
+        content:
+          "Fedetec Operations Hub is a modern SaaS admin dashboard for technical service management.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Fedetec Operations Hub is a modern SaaS admin dashboard for technical service management." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41360d2c-8cb9-4258-bea6-03684362d8b7/id-preview-da89c1a6--6702a894-ea46-4655-9f06-4774f3a0700a.lovable.app-1779975164641.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41360d2c-8cb9-4258-bea6-03684362d8b7/id-preview-da89c1a6--6702a894-ea46-4655-9f06-4774f3a0700a.lovable.app-1779975164641.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Fedetec Operations Hub is a modern SaaS admin dashboard for technical service management.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41360d2c-8cb9-4258-bea6-03684362d8b7/id-preview-da89c1a6--6702a894-ea46-4655-9f06-4774f3a0700a.lovable.app-1779975164641.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41360d2c-8cb9-4258-bea6-03684362d8b7/id-preview-da89c1a6--6702a894-ea46-4655-9f06-4774f3a0700a.lovable.app-1779975164641.png",
+      },
     ],
     links: [
       {
@@ -117,8 +138,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

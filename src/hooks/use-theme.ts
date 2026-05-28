@@ -4,8 +4,12 @@ export function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("fedetec-theme")) as "light" | "dark" | null;
-    const initial = saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const saved = (typeof window !== "undefined" && localStorage.getItem("fedetec-theme")) as
+      | "light"
+      | "dark"
+      | null;
+    const initial =
+      saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     setTheme(initial);
     document.documentElement.classList.toggle("dark", initial === "dark");
   }, []);

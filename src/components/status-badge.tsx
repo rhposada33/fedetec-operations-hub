@@ -1,8 +1,14 @@
 import { cn } from "@/lib/utils";
-import type { ServiceStatus } from "@/lib/mock-data";
-import { statusVariant } from "@/lib/mock-data";
+import type { ServiceStatus } from "@/lib/api/types";
+import { statusVariant } from "@/lib/api/format";
 
-export function StatusBadge({ status, className }: { status: ServiceStatus | string; className?: string }) {
+export function StatusBadge({
+  status,
+  className,
+}: {
+  status: ServiceStatus | string;
+  className?: string;
+}) {
   const v = statusVariant[status as ServiceStatus];
   const fallback = { label: status, tone: "bg-muted text-muted-foreground" };
   const { label, tone } = v ?? fallback;

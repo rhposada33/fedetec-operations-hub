@@ -1,14 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Search, Plus, Filter, Download, Eye, UserPlus, X, MapPin, Calendar, Building2, Wrench, Car } from "lucide-react";
+import { Search, Filter, Eye, Radio, Receipt } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/status-badge";
-import { services, statusVariant, formatCurrency, formatDate, type ServiceStatus } from "@/lib/mock-data";
-import { toast } from "sonner";
+import { ErrorState, LoadingState } from "@/components/async-state";
+import { adminApi, servicesApi } from "@/lib/api/client";
+import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
+import type { Service, ServiceStatus } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/servicios")({
   head: () => ({ meta: [{ title: "Servicios — Fedetec" }] }),
@@ -16,27 +33,56 @@ export const Route = createFileRoute("/_app/servicios")({
 });
 
 function ServiciosPage() {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
-  const [page, setPage] = useState(1);
-  const perPage = 8;
-  const [selected, setSelected] = useState<(typeof services)[number] | null>(null);
+  const [selected, setSelected] = useState<Service | null>(null);
+
+  const servicesQuery = useQuery({
+    queryKey: ["admin", "services", status],
+    queryFn: () => adminApi.services(token!, status === "all" ? {} : { estado: status }),
+    enabled: Boolean(token),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => servicesApi.publish(token!, id),
+    onSuccess: () => {
+      toast.success("Servicio publicado");
+      queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible publicar"),
+  });
+
+  const paymentMutation = useMutation({
+    mutationFn: (id: string) => servicesApi.paymentReport(token!, id),
+    onSuccess: () => {
+      toast.success("Reporte de pago generado");
+      queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible generar pago"),
+  });
 
   const filtered = useMemo(() => {
-    return services.filter((s) => {
-      const matchQ =
-        !q ||
-        s.id.toLowerCase().includes(q.toLowerCase()) ||
-        s.company.toLowerCase().includes(q.toLowerCase()) ||
-        s.plate.toLowerCase().includes(q.toLowerCase()) ||
-        s.technician.toLowerCase().includes(q.toLowerCase());
-      const matchS = status === "all" || s.status === status;
-      return matchQ && matchS;
-    });
-  }, [q, status]);
+    const list = servicesQuery.data ?? [];
+    const term = q.toLowerCase();
+    return list.filter(
+      (service) =>
+        !term ||
+        service.id.toLowerCase().includes(term) ||
+        service.placa_vehiculo?.toLowerCase().includes(term) ||
+        service.empresa_cliente_id.toLowerCase().includes(term) ||
+        service.tecnico_aceptado_id?.toLowerCase().includes(term),
+    );
+  }, [q, servicesQuery.data]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
+  if (servicesQuery.isLoading) return <LoadingState label="Cargando servicios..." />;
+  if (servicesQuery.isError)
+    return <ErrorState error={servicesQuery.error} onRetry={() => servicesQuery.refetch()} />;
 
   return (
     <div className="space-y-5">
@@ -44,12 +90,6 @@ function ServiciosPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Servicios</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} servicios encontrados</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Exportar</Button>
-          <Button size="sm" onClick={() => toast.success("Servicio creado", { description: "SRV-10273 listo para publicar" })}>
-            <Plus className="mr-2 h-4 w-4" /> Crear servicio
-          </Button>
         </div>
       </div>
 
@@ -62,19 +102,25 @@ function ServiciosPage() {
                 placeholder="Buscar por ID, empresa, placa o técnico..."
                 className="pl-9"
                 value={q}
-                onChange={(e) => { setQ(e.target.value); setPage(1); }}
+                onChange={(event) => setQ(event.target.value)}
               />
             </div>
-            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
-                {Object.entries(statusVariant).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                {Object.entries(statusVariant).map(([key, value]) => (
+                  <SelectItem key={key} value={key}>
+                    {value.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm"><Filter className="mr-2 h-4 w-4" /> Más filtros</Button>
+            <Button variant="outline" size="sm" onClick={() => servicesQuery.refetch()}>
+              <Filter className="mr-2 h-4 w-4" /> Actualizar
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -90,106 +136,107 @@ function ServiciosPage() {
                   <th className="px-4 py-3 font-medium">Tipo</th>
                   <th className="px-4 py-3 font-medium">Placa</th>
                   <th className="px-4 py-3 font-medium">Técnico</th>
-                  <th className="px-4 py-3 font-medium">Fecha</th>
-                  <th className="px-4 py-3 font-medium">Distancia</th>
+                  <th className="px-4 py-3 font-medium">Programado</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 font-medium text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {paged.map((s) => (
-                  <tr key={s.id} className="border-t border-border transition hover:bg-muted/30">
-                    <td className="px-4 py-3 font-mono text-xs">{s.id}</td>
-                    <td className="px-4 py-3 font-medium">{s.company}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.type}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{s.plate}</td>
-                    <td className="px-4 py-3">{s.technician}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDate(s.date)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.distance} km</td>
-                    <td className="px-4 py-3"><StatusBadge status={s.status as ServiceStatus} /></td>
+                {filtered.map((service) => (
+                  <tr
+                    key={service.id}
+                    className="border-t border-border transition hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs">{service.id.slice(0, 8)}</td>
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {service.empresa_cliente_id.slice(0, 8)}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {serviceTypeLabel(service.tipo_servicio)}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs">{service.placa_vehiculo ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {service.tecnico_aceptado_id?.slice(0, 8) ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {formatDate(service.fecha_programada)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={service.estado as ServiceStatus} />
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelected(s)}>
+                      <Button variant="ghost" size="sm" onClick={() => setSelected(service)}>
                         <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver
                       </Button>
                     </td>
                   </tr>
                 ))}
-                {paged.length === 0 && (
-                  <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">No hay servicios para los filtros aplicados.</td></tr>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-12 text-center text-sm text-muted-foreground"
+                    >
+                      No hay servicios para los filtros aplicados.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
-            <div>Página {page} de {totalPages}</div>
-            <div className="flex gap-1">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Siguiente</Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
           {selected && (
             <>
               <SheetHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <SheetTitle className="font-mono">{selected.id}</SheetTitle>
-                    <SheetDescription>{selected.type}</SheetDescription>
-                  </div>
-                  <StatusBadge status={selected.status as ServiceStatus} />
-                </div>
+                <SheetTitle className="font-mono">{selected.id}</SheetTitle>
+                <SheetDescription>{serviceTypeLabel(selected.tipo_servicio)}</SheetDescription>
               </SheetHeader>
-
               <div className="mt-6 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { icon: Building2, label: "Empresa", value: selected.company },
-                    { icon: Car, label: "Placa", value: selected.plate },
-                    { icon: Wrench, label: "Técnico", value: selected.technician },
-                    { icon: Calendar, label: "Fecha", value: formatDate(selected.date) },
-                    { icon: MapPin, label: "Distancia", value: `${selected.distance} km` },
-                  ].map((f) => (
-                    <div key={f.label} className="rounded-lg border border-border bg-muted/30 p-3">
-                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        <f.icon className="h-3 w-3" /> {f.label}
-                      </div>
-                      <div className="mt-1 text-sm font-medium">{f.value}</div>
-                    </div>
-                  ))}
-                  <div className="col-span-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                    <div className="text-[10px] uppercase tracking-wider text-primary">Monto estimado</div>
-                    <div className="mt-1 text-xl font-semibold">{formatCurrency(selected.amount)}</div>
-                  </div>
+                <StatusBadge status={selected.estado} />
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <Info label="Empresa" value={selected.empresa_cliente_id} />
+                  <Info label="Técnico" value={selected.tecnico_aceptado_id ?? "—"} />
+                  <Info label="Placa" value={selected.placa_vehiculo ?? "—"} />
+                  <Info label="Programado" value={formatDate(selected.fecha_programada)} />
+                  <Info label="Ubicación" value={`${selected.latitud}, ${selected.longitud}`} />
+                  <Info label="Dirección" value={selected.direccion ?? "—"} />
                 </div>
-
-                <div className="rounded-lg border border-border p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Timeline</div>
-                  <ol className="mt-3 space-y-3 text-sm">
-                    {["Creado", "Publicado", "Asignado", "En proceso"].map((step, i) => (
-                      <li key={step} className="flex items-center gap-3">
-                        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold ${i <= 2 ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
-                        <div className="flex-1">{step}</div>
-                        <span className="text-[10px] text-muted-foreground">{i <= 2 ? "✓" : "pendiente"}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={() => toast.success("Servicio publicado")}>Publicar</Button>
-                  <Button variant="outline" onClick={() => toast("Técnico reasignado")}><UserPlus className="mr-1.5 h-4 w-4" />Asignar</Button>
-                  <Button variant="outline" onClick={() => toast("Mostrando evidencias")}><Eye className="mr-1.5 h-4 w-4" /> Ver evidencia</Button>
-                  <Button variant="destructive" onClick={() => toast.error("Servicio cancelado")}><X className="mr-1.5 h-4 w-4" /> Cancelar</Button>
+                  <Button
+                    disabled={publishMutation.isPending || selected.estado !== "CREADO"}
+                    onClick={() => publishMutation.mutate(selected.id)}
+                  >
+                    <Radio className="mr-2 h-4 w-4" /> Publicar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      paymentMutation.isPending ||
+                      !["FINALIZADO", "VALIDADO"].includes(selected.estado)
+                    }
+                    onClick={() => paymentMutation.mutate(selected.id)}
+                  >
+                    <Receipt className="mr-2 h-4 w-4" /> Generar pago
+                  </Button>
                 </div>
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-1 break-all font-medium">{value}</div>
     </div>
   );
 }

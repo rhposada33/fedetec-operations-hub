@@ -1,11 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Download, FileSpreadsheet, FileText, Wallet, TrendingUp, Clock } from "lucide-react";
+import { Wallet, TrendingUp, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { payments, formatCurrency, formatDate } from "@/lib/mock-data";
-import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ErrorState, LoadingState } from "@/components/async-state";
+import { paymentsApi } from "@/lib/api/client";
+import { formatCurrency, formatDate } from "@/lib/api/format";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/pagos")({
   head: () => ({ meta: [{ title: "Pagos — Fedetec" }] }),
@@ -20,29 +28,49 @@ const statusTone: Record<string, string> = {
 };
 
 function PagosPage() {
+  const { token } = useAuth();
   const [status, setStatus] = useState("all");
-  const list = status === "all" ? payments : payments.filter((p) => p.status === status);
-  const total = payments.reduce((a, p) => a + p.amount, 0);
-  const paid = payments.filter((p) => p.status === "PAGADO").reduce((a, p) => a + p.amount, 0);
-  const pending = payments.filter((p) => p.status === "PENDIENTE" || p.status === "GENERADO").reduce((a, p) => a + p.amount, 0);
+  const reports = useQuery({
+    queryKey: ["payments"],
+    queryFn: () => paymentsApi.list(token!),
+    enabled: Boolean(token),
+  });
+
+  if (reports.isLoading) return <LoadingState label="Cargando reportes de pago..." />;
+  if (reports.isError)
+    return <ErrorState error={reports.error} onRetry={() => reports.refetch()} />;
+
+  const all = reports.data ?? [];
+  const list = status === "all" ? all : all.filter((report) => report.estado === status);
+  const total = all.reduce((sum, report) => sum + Number(report.valor ?? 0), 0);
+  const paid = all
+    .filter((report) => report.estado === "PAGADO")
+    .reduce((sum, report) => sum + Number(report.valor ?? 0), 0);
+  const pending = all
+    .filter((report) => report.estado === "PENDIENTE" || report.estado === "GENERADO")
+    .reduce((sum, report) => sum + Number(report.valor ?? 0), 0);
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Reportes de pago</h1>
-          <p className="text-sm text-muted-foreground">Liquidaciones generadas en el período actual</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.success("Exportado a CSV")}><FileSpreadsheet className="mr-2 h-4 w-4" /> CSV</Button>
-          <Button variant="outline" onClick={() => toast.success("Exportado a PDF")}><FileText className="mr-2 h-4 w-4" /> PDF</Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Reportes de pago</h1>
+        <p className="text-sm text-muted-foreground">Liquidaciones generadas desde el backend</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryCard icon={Wallet} label="Total generado" value={formatCurrency(total)} tone="primary" />
+        <SummaryCard
+          icon={Wallet}
+          label="Total generado"
+          value={formatCurrency(total)}
+          tone="primary"
+        />
         <SummaryCard icon={TrendingUp} label="Pagado" value={formatCurrency(paid)} tone="success" />
-        <SummaryCard icon={Clock} label="En proceso" value={formatCurrency(pending)} tone="warning" />
+        <SummaryCard
+          icon={Clock}
+          label="En proceso"
+          value={formatCurrency(pending)}
+          tone="warning"
+        />
       </div>
 
       <Card>
@@ -52,7 +80,9 @@ function PagosPage() {
             <CardDescription>{list.length} registros</CardDescription>
           </div>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="PENDIENTE">Pendiente</SelectItem>
@@ -74,21 +104,34 @@ function PagosPage() {
                   <th className="px-4 py-3 font-medium">Generado</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 font-medium text-right">Monto</th>
-                  <th className="px-4 py-3 font-medium text-right">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {list.map((p) => (
-                  <tr key={p.id} className="border-t border-border transition hover:bg-muted/30">
-                    <td className="px-4 py-3 font-mono text-xs">{p.id}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.serviceId}</td>
-                    <td className="px-4 py-3">{p.technician}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.company}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDate(p.generated)}</td>
-                    <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusTone[p.status]}`}>{p.status}</span></td>
-                    <td className="px-4 py-3 text-right font-semibold">{formatCurrency(p.amount)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm"><Download className="h-3.5 w-3.5" /></Button>
+                {list.map((report) => (
+                  <tr
+                    key={report.id}
+                    className="border-t border-border transition hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs">{report.id.slice(0, 8)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {report.servicio_id.slice(0, 8)}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs">{report.tecnico_id.slice(0, 8)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {report.empresa_cliente_id.slice(0, 8)}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {formatDate(report.fecha_generacion)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusTone[report.estado]}`}
+                      >
+                        {report.estado}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold">
+                      {formatCurrency(report.valor)}
                     </td>
                   </tr>
                 ))}
@@ -97,34 +140,21 @@ function PagosPage() {
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Timeline de pagos</CardTitle>
-          <CardDescription>Eventos recientes</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ol className="relative border-l-2 border-border pl-6">
-            {payments.slice(0, 6).map((p, i) => (
-              <li key={p.id} className="mb-5 last:mb-0">
-                <span className={`absolute -left-[7px] mt-1 h-3 w-3 rounded-full border-2 border-background ${p.status === "PAGADO" ? "bg-success" : p.status === "GENERADO" ? "bg-info" : p.status === "ANULADO" ? "bg-destructive" : "bg-warning"}`} />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium">{p.id} · {p.technician}</div>
-                    <div className="text-xs text-muted-foreground">{p.company} · {formatDate(p.generated)}</div>
-                  </div>
-                  <div className="text-sm font-semibold">{formatCurrency(p.amount)}</div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-function SummaryCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: string }) {
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: typeof Wallet;
+  label: string;
+  value: string;
+  tone: string;
+}) {
   const toneCls: Record<string, string> = {
     primary: "bg-primary/10 text-primary",
     success: "bg-success/10 text-success",
@@ -133,7 +163,9 @@ function SummaryCard({ icon: Icon, label, value, tone }: { icon: any; label: str
   return (
     <Card>
       <CardContent className="flex items-center gap-4 p-5">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${toneCls[tone]}`}><Icon className="h-5 w-5" /></div>
+        <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${toneCls[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
         <div>
           <div className="text-xs text-muted-foreground">{label}</div>
           <div className="text-xl font-semibold">{value}</div>

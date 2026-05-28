@@ -58,7 +58,7 @@
   --card-foreground: oklch(0.18 0.02 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 260);
-  --primary: oklch(0.7 0.18 45);              /* orange */
+  --primary: oklch(0.7 0.18 45); /* orange */
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.96 0.005 250);
   --secondary-foreground: oklch(0.22 0.02 260);
@@ -137,7 +137,8 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
