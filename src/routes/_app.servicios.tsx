@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Search, Filter, Eye, Radio, Receipt } from "lucide-react";
+import { Search, Filter, Eye, Radio, Receipt, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,11 +22,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
-import { adminApi, servicesApi } from "@/lib/api/client";
+import { adminApi, companyPortalApi, servicesApi } from "@/lib/api/client";
 import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
-import type { Service, ServiceStatus } from "@/lib/api/types";
+import { getCompanyApiKey, setCompanyApiKey } from "@/lib/api/storage";
+import type { CreateServicePayload, Service, ServiceStatus } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/servicios")({
@@ -38,6 +42,9 @@ function ServiciosPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [selected, setSelected] = useState<Service | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(() => crearFormularioServicio());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   const servicesQuery = useQuery({
     queryKey: ["admin", "services", status],
@@ -67,6 +74,24 @@ function ServiciosPage() {
       toast.error(error instanceof Error ? error.message : "No fue posible generar pago"),
   });
 
+  const createMutation = useMutation({
+    mutationFn: () => {
+      const payload = construirPayloadServicio(createForm);
+      return companyPortalApi.createService(createForm.api_key.trim(), idempotencyKey, payload);
+    },
+    onSuccess: () => {
+      toast.success("Servicio creado");
+      setCompanyApiKey(createForm.api_key.trim());
+      setCreateForm(crearFormularioServicio(createForm.api_key));
+      setIdempotencyKey(crypto.randomUUID());
+      setCreateOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible crear el servicio"),
+  });
+
   const filtered = useMemo(() => {
     const list = servicesQuery.data ?? [];
     const term = q.toLowerCase();
@@ -91,6 +116,9 @@ function ServiciosPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Servicios</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} servicios encontrados</p>
         </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" /> Nuevo servicio
+        </Button>
       </div>
 
       <Card>
@@ -228,6 +256,99 @@ function ServiciosPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Nuevo servicio</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>API key de empresa</Label>
+              <Input
+                value={createForm.api_key}
+                onChange={(event) => setCreateForm({ ...createForm, api_key: event.target.value })}
+                placeholder="fedetec_..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de servicio</Label>
+              <Select
+                value={createForm.tipo_servicio}
+                onValueChange={(value) => setCreateForm({ ...createForm, tipo_servicio: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">{serviceTypeLabel(1)}</SelectItem>
+                  <SelectItem value="2">{serviceTypeLabel(2)}</SelectItem>
+                  <SelectItem value="3">{serviceTypeLabel(3)}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Field
+              label="Placa vehículo"
+              value={createForm.placa_vehiculo}
+              onChange={(value) => setCreateForm({ ...createForm, placa_vehiculo: value })}
+            />
+            <Field
+              label="Latitud"
+              type="number"
+              value={createForm.latitud}
+              onChange={(value) => setCreateForm({ ...createForm, latitud: value })}
+            />
+            <Field
+              label="Longitud"
+              type="number"
+              value={createForm.longitud}
+              onChange={(value) => setCreateForm({ ...createForm, longitud: value })}
+            />
+            <Field
+              label="Fecha programada"
+              type="datetime-local"
+              value={createForm.fecha_programada}
+              onChange={(value) => setCreateForm({ ...createForm, fecha_programada: value })}
+            />
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Dirección</Label>
+              <Textarea
+                value={createForm.direccion}
+                onChange={(event) =>
+                  setCreateForm({ ...createForm, direccion: event.target.value })
+                }
+                placeholder="Dirección o referencia"
+              />
+            </div>
+            <Button
+              className="sm:col-span-2"
+              disabled={!formularioServicioValido(createForm) || createMutation.isPending}
+              onClick={() => createMutation.mutate()}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Crear servicio
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} />
     </div>
   );
 }
@@ -239,4 +360,48 @@ function Info({ label, value }: { label: string; value: string }) {
       <div className="mt-1 break-all font-medium">{value}</div>
     </div>
   );
+}
+
+type ServicioForm = {
+  api_key: string;
+  tipo_servicio: string;
+  placa_vehiculo: string;
+  latitud: string;
+  longitud: string;
+  direccion: string;
+  fecha_programada: string;
+};
+
+function crearFormularioServicio(apiKey = getCompanyApiKey() ?? ""): ServicioForm {
+  const fecha = new Date(Date.now() + 60 * 60 * 1000);
+  fecha.setSeconds(0, 0);
+  return {
+    api_key: apiKey,
+    tipo_servicio: "1",
+    placa_vehiculo: "",
+    latitud: "4.711",
+    longitud: "-74.0721",
+    direccion: "",
+    fecha_programada: fecha.toISOString().slice(0, 16),
+  };
+}
+
+function formularioServicioValido(form: ServicioForm) {
+  return (
+    form.api_key.trim().length > 0 &&
+    Number.isFinite(Number(form.latitud)) &&
+    Number.isFinite(Number(form.longitud)) &&
+    Boolean(form.fecha_programada)
+  );
+}
+
+function construirPayloadServicio(form: ServicioForm): CreateServicePayload {
+  return {
+    tipo_servicio: Number(form.tipo_servicio) as 1 | 2 | 3,
+    placa_vehiculo: form.placa_vehiculo.trim() || null,
+    latitud: Number(form.latitud),
+    longitud: Number(form.longitud),
+    direccion: form.direccion.trim() || null,
+    fecha_programada: new Date(form.fecha_programada).toISOString(),
+  };
 }
