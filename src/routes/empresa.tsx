@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Key, Plus, RefreshCcw } from "lucide-react";
+import { Building2, LogOut, Plus, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { companyPortalApi } from "@/lib/api/client";
-import { getCompanyApiKey, setCompanyApiKey } from "@/lib/api/storage";
 import { formatDate, serviceTypeLabel } from "@/lib/api/format";
 import type { CreateServicePayload } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/empresa")({
   head: () => ({ meta: [{ title: "Empresa — Fedetec" }] }),
@@ -21,9 +21,8 @@ export const Route = createFileRoute("/empresa")({
 });
 
 function EmpresaPortal() {
+  const { token, user, isCompany, isLoading, logout } = useAuth();
   const queryClient = useQueryClient();
-  const [apiKey, setApiKeyState] = useState(() => getCompanyApiKey() ?? "");
-  const [draftKey, setDraftKey] = useState(apiKey);
   const [form, setForm] = useState({
     tipo_servicio: "1",
     placa_vehiculo: "",
@@ -34,9 +33,9 @@ function EmpresaPortal() {
   });
 
   const services = useQuery({
-    queryKey: ["company", "services", apiKey],
-    queryFn: () => companyPortalApi.listServices(apiKey),
-    enabled: Boolean(apiKey),
+    queryKey: ["company", "services", token],
+    queryFn: () => companyPortalApi.listServices(token!),
+    enabled: Boolean(token && isCompany),
     retry: false,
   });
 
@@ -50,7 +49,7 @@ function EmpresaPortal() {
         direccion: form.direccion || null,
         fecha_programada: new Date(form.fecha_programada).toISOString(),
       };
-      return companyPortalApi.createService(apiKey, crypto.randomUUID(), payload);
+      return companyPortalApi.createService(token!, crypto.randomUUID(), payload);
     },
     onSuccess: () => {
       toast.success("Servicio creado");
@@ -60,10 +59,26 @@ function EmpresaPortal() {
       toast.error(error instanceof Error ? error.message : "No fue posible crear el servicio"),
   });
 
-  function saveKey() {
-    setCompanyApiKey(draftKey);
-    setApiKeyState(draftKey);
-    queryClient.invalidateQueries({ queryKey: ["company"] });
+  if (isLoading) return <LoadingState label="Validando sesión..." />;
+
+  if (!token || !isCompany) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Login de empresa requerido</CardTitle>
+            <CardDescription>
+              Inicia sesión con el correo y contraseña de la empresa cliente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link to="/login">Iniciar sesión</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -72,29 +87,15 @@ function EmpresaPortal() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Portal empresa</h1>
-            <p className="text-sm text-muted-foreground">Crea y consulta servicios con API key.</p>
+            <p className="text-sm text-muted-foreground">{user?.correo}</p>
           </div>
-          <Building2 className="h-8 w-8 text-primary" />
+          <div className="flex items-center gap-2">
+            <Building2 className="h-8 w-8 text-primary" />
+            <Button variant="outline" size="sm" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" /> Salir
+            </Button>
+          </div>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>API key</CardTitle>
-            <CardDescription>La clave se guarda localmente en este navegador.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative flex-1">
-              <Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                value={draftKey}
-                onChange={(event) => setDraftKey(event.target.value)}
-                placeholder="fedetec_..."
-              />
-            </div>
-            <Button onClick={saveKey}>Guardar API key</Button>
-          </CardContent>
-        </Card>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card>
@@ -135,7 +136,7 @@ function EmpresaPortal() {
               />
               <Button
                 className="w-full"
-                disabled={!apiKey || createMutation.isPending}
+                disabled={createMutation.isPending}
                 onClick={() => createMutation.mutate()}
               >
                 <Plus className="mr-2 h-4 w-4" /> Crear servicio
@@ -147,19 +148,15 @@ function EmpresaPortal() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Servicios</CardTitle>
-                <CardDescription>Servicios asociados a la API key.</CardDescription>
+                <CardDescription>Servicios asociados a tu empresa.</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={() => services.refetch()}>
                 <RefreshCcw className="mr-2 h-4 w-4" /> Actualizar
               </Button>
             </CardHeader>
             <CardContent>
-              {!apiKey ? (
-                <div className="text-sm text-muted-foreground">
-                  Guarda una API key para consultar servicios.
-                </div>
-              ) : services.isLoading ? (
-                <LoadingState label="Validando API key..." />
+              {services.isLoading ? (
+                <LoadingState label="Cargando servicios..." />
               ) : services.isError ? (
                 <ErrorState error={services.error} onRetry={() => services.refetch()} />
               ) : (

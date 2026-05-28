@@ -10,6 +10,7 @@ type AuthContextValue = {
   isLoading: boolean;
   isAdmin: boolean;
   isTechnician: boolean;
+  isCompany: boolean;
   login: (correo: string, password: string) => Promise<CurrentUser>;
   logout: () => void;
 };
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading: Boolean(token) && meQuery.isLoading,
       isAdmin: Boolean(user?.roles.includes("ADMIN")),
       isTechnician: Boolean(user?.roles.includes("TECNICO")),
+      isCompany: Boolean(user?.roles.includes("EMPRESA_CLIENTE")),
       login: async (correo, password) => loginMutation.mutateAsync({ correo, password }),
       logout: () => {
         setAuthToken(null);

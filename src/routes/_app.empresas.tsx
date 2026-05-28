@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Mail, Phone, Key, Copy, Plus } from "lucide-react";
+import { Building2, Mail, Phone, LockKeyhole, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,12 @@ function EmpresasPage() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [form, setForm] = useState({
     nombre: "",
     identificacion_tributaria: "",
     correo_contacto: "",
     telefono_contacto: "",
+    password: "",
   });
 
   const companies = useQuery({
@@ -38,13 +38,14 @@ function EmpresasPage() {
   const createMutation = useMutation({
     mutationFn: () => companiesApi.create(token!, { ...form, esta_activa: true }),
     onSuccess: (company) => {
-      setApiKey(company.api_key);
+      toast.success(`Empresa creada. Login: ${company.correo_contacto}`);
       setOpen(false);
       setForm({
         nombre: "",
         identificacion_tributaria: "",
         correo_contacto: "",
         telefono_contacto: "",
+        password: "",
       });
       queryClient.invalidateQueries({ queryKey: ["admin", "companies"] });
     },
@@ -102,10 +103,10 @@ function EmpresasPage() {
               </div>
               <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3">
                 <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <Key className="h-3 w-3" /> API key
+                  <LockKeyhole className="h-3 w-3" /> Login empresa
                 </div>
                 <code className="mt-1 block text-[11px] text-muted-foreground">
-                  Solo visible al crear
+                  {company.usuario_id ? "Usuario vinculado" : "Sin usuario vinculado"}
                 </code>
               </div>
             </CardContent>
@@ -139,36 +140,25 @@ function EmpresasPage() {
               value={form.telefono_contacto}
               onChange={(value) => setForm({ ...form, telefono_contacto: value })}
             />
+            <Field
+              label="Contraseña inicial"
+              type="password"
+              value={form.password}
+              onChange={(value) => setForm({ ...form, password: value })}
+            />
             <Button
               className="w-full"
-              disabled={createMutation.isPending || !form.nombre}
+              disabled={
+                createMutation.isPending ||
+                !form.nombre ||
+                !form.correo_contacto ||
+                form.password.length < 8
+              }
               onClick={() => createMutation.mutate()}
             >
-              Crear y generar API key
+              Crear login de empresa
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!apiKey} onOpenChange={(open) => !open && setApiKey(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>API key generada</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Copia esta clave ahora. No volverá a mostrarse.
-          </p>
-          <div className="rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs break-all">
-            {apiKey}
-          </div>
-          <Button
-            onClick={() => {
-              navigator.clipboard?.writeText(apiKey ?? "");
-              toast.success("API key copiada");
-            }}
-          >
-            <Copy className="mr-2 h-4 w-4" /> Copiar
-          </Button>
         </DialogContent>
       </Dialog>
     </div>
@@ -179,15 +169,17 @@ function Field({
   label,
   value,
   onChange,
+  type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  type?: string;
 }) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
-      <Input value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} />
     </div>
   );
 }

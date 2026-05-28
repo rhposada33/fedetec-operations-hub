@@ -2,6 +2,7 @@ import type {
   AppConfiguration,
   Company,
   CompanyCreated,
+  CreateCompanyPayload,
   CreateServicePayload,
   CurrentUser,
   DashboardResponse,
@@ -34,7 +35,6 @@ export class ApiError extends Error {
 type ApiOptions = {
   method?: string;
   token?: string | null;
-  apiKey?: string | null;
   body?: unknown;
   headers?: HeadersInit;
 };
@@ -57,7 +57,6 @@ async function parseResponse(response: Response) {
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.token) headers.set("Authorization", `Bearer ${options.token}`);
-  if (options.apiKey) headers.set("X-API-Key", options.apiKey);
 
   let body: BodyInit | undefined;
   if (options.body instanceof FormData || options.body instanceof URLSearchParams) {
@@ -115,7 +114,7 @@ export const adminApi = {
 };
 
 export const companiesApi = {
-  create: (token: string, body: Partial<Company>) =>
+  create: (token: string, body: CreateCompanyPayload) =>
     apiFetch<CompanyCreated>("/api/v1/empresas-cliente", { method: "POST", token, body }),
   update: (token: string, id: string, body: Partial<Company>) =>
     apiFetch<Company>(`/api/v1/empresas-cliente/${id}`, {
@@ -126,6 +125,15 @@ export const companiesApi = {
 };
 
 export const servicesApi = {
+  create: (token: string, idempotencyKey: string, body: CreateServicePayload) =>
+    apiFetch<Service>("/api/v1/servicios", {
+      method: "POST",
+      token,
+      headers: { "Idempotency-Key": idempotencyKey },
+      body,
+    }),
+  list: (token: string) => apiFetch<Service[]>("/api/v1/servicios", { token }),
+  get: (token: string, id: string) => apiFetch<Service>(`/api/v1/servicios/${id}`, { token }),
   publish: (token: string, id: string, radio_metros?: number) =>
     apiFetch<PublishedService>(`/api/v1/servicios/${id}/publicar${buildQuery({ radio_metros })}`, {
       method: "POST",
@@ -196,14 +204,8 @@ export const technicianApi = {
 };
 
 export const companyPortalApi = {
-  listServices: (apiKey: string) => apiFetch<Service[]>("/api/v1/servicios", { apiKey }),
-  getService: (apiKey: string, id: string) =>
-    apiFetch<Service>(`/api/v1/servicios/${id}`, { apiKey }),
-  createService: (apiKey: string, idempotencyKey: string, body: CreateServicePayload) =>
-    apiFetch<Service>("/api/v1/servicios", {
-      method: "POST",
-      apiKey,
-      headers: { "Idempotency-Key": idempotencyKey },
-      body,
-    }),
+  listServices: (token: string) => servicesApi.list(token),
+  getService: (token: string, id: string) => servicesApi.get(token, id),
+  createService: (token: string, idempotencyKey: string, body: CreateServicePayload) =>
+    servicesApi.create(token, idempotencyKey, body),
 };

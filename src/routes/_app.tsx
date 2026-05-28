@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { token, isLoading, isAdmin, isTechnician } = useAuth();
+  const { token, isLoading, isAdmin, isTechnician, isCompany } = useAuth();
 
   if (!token || (!isLoading && !isAdmin)) {
     return (
@@ -29,6 +29,11 @@ function AppLayout() {
             {isTechnician && (
               <Button asChild variant="outline">
                 <Link to="/tecnico">Ir a técnico</Link>
+              </Button>
+            )}
+            {isCompany && (
+              <Button asChild variant="outline">
+                <Link to="/empresa">Ir a empresa</Link>
               </Button>
             )}
           </div>

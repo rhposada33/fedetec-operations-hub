@@ -45,7 +45,7 @@ function LoginPage() {
           </div>
           <div>
             <CardTitle>Fedetec Operations Hub</CardTitle>
-            <CardDescription>Ingresa con tu usuario operativo o técnico.</CardDescription>
+            <CardDescription>Ingresa con tu usuario operativo, técnico o empresa.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -82,7 +82,7 @@ function LoginPage() {
             </Button>
           </form>
           <div className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            Las empresas cliente pueden entrar al portal con API key desde{" "}
+            Las empresas cliente pueden entrar al portal con su correo y contraseña desde{" "}
             <a className="font-medium text-primary hover:underline" href="/empresa">
               /empresa
             </a>

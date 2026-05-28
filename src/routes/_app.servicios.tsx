@@ -25,9 +25,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
-import { adminApi, companyPortalApi, servicesApi } from "@/lib/api/client";
+import { adminApi, servicesApi } from "@/lib/api/client";
 import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
-import { getCompanyApiKey, setCompanyApiKey } from "@/lib/api/storage";
 import type { CreateServicePayload, Service, ServiceStatus } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
@@ -49,6 +48,12 @@ function ServiciosPage() {
   const servicesQuery = useQuery({
     queryKey: ["admin", "services", status],
     queryFn: () => adminApi.services(token!, status === "all" ? {} : { estado: status }),
+    enabled: Boolean(token),
+  });
+
+  const companiesQuery = useQuery({
+    queryKey: ["admin", "companies"],
+    queryFn: () => adminApi.companies(token!, true),
     enabled: Boolean(token),
   });
 
@@ -77,12 +82,11 @@ function ServiciosPage() {
   const createMutation = useMutation({
     mutationFn: () => {
       const payload = construirPayloadServicio(createForm);
-      return companyPortalApi.createService(createForm.api_key.trim(), idempotencyKey, payload);
+      return servicesApi.create(token!, idempotencyKey, payload);
     },
     onSuccess: () => {
       toast.success("Servicio creado");
-      setCompanyApiKey(createForm.api_key.trim());
-      setCreateForm(crearFormularioServicio(createForm.api_key));
+      setCreateForm(crearFormularioServicio(createForm.empresa_cliente_id));
       setIdempotencyKey(crypto.randomUUID());
       setCreateOpen(false);
       queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
@@ -264,12 +268,24 @@ function ServiciosPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>API key de empresa</Label>
-              <Input
-                value={createForm.api_key}
-                onChange={(event) => setCreateForm({ ...createForm, api_key: event.target.value })}
-                placeholder="fedetec_..."
-              />
+              <Label>Empresa cliente</Label>
+              <Select
+                value={createForm.empresa_cliente_id}
+                onValueChange={(value) =>
+                  setCreateForm({ ...createForm, empresa_cliente_id: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(companiesQuery.data ?? []).map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de servicio</Label>
@@ -363,7 +379,7 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 type ServicioForm = {
-  api_key: string;
+  empresa_cliente_id: string;
   tipo_servicio: string;
   placa_vehiculo: string;
   latitud: string;
@@ -372,11 +388,11 @@ type ServicioForm = {
   fecha_programada: string;
 };
 
-function crearFormularioServicio(apiKey = getCompanyApiKey() ?? ""): ServicioForm {
+function crearFormularioServicio(empresaClienteId = ""): ServicioForm {
   const fecha = new Date(Date.now() + 60 * 60 * 1000);
   fecha.setSeconds(0, 0);
   return {
-    api_key: apiKey,
+    empresa_cliente_id: empresaClienteId,
     tipo_servicio: "1",
     placa_vehiculo: "",
     latitud: "4.711",
@@ -388,7 +404,7 @@ function crearFormularioServicio(apiKey = getCompanyApiKey() ?? ""): ServicioFor
 
 function formularioServicioValido(form: ServicioForm) {
   return (
-    form.api_key.trim().length > 0 &&
+    form.empresa_cliente_id.trim().length > 0 &&
     Number.isFinite(Number(form.latitud)) &&
     Number.isFinite(Number(form.longitud)) &&
     Boolean(form.fecha_programada)
@@ -397,6 +413,7 @@ function formularioServicioValido(form: ServicioForm) {
 
 function construirPayloadServicio(form: ServicioForm): CreateServicePayload {
   return {
+    empresa_cliente_id: form.empresa_cliente_id,
     tipo_servicio: Number(form.tipo_servicio) as 1 | 2 | 3,
     placa_vehiculo: form.placa_vehiculo.trim() || null,
     latitud: Number(form.latitud),

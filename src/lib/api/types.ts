@@ -21,6 +21,7 @@ export type TokenResponse = {
 export type CurrentUser = {
   id: string;
   tecnico_id: string | null;
+  empresa_cliente_id: string | null;
   correo: string;
   nombre_completo: string;
   telefono: string | null;
@@ -44,6 +45,7 @@ export type DashboardResponse = {
 
 export type Company = {
   id: string;
+  usuario_id: string | null;
   nombre: string;
   identificacion_tributaria: string | null;
   correo_contacto: string | null;
@@ -53,7 +55,16 @@ export type Company = {
 };
 
 export type CompanyCreated = Company & {
-  api_key: string;
+  usuario_id: string;
+};
+
+export type CreateCompanyPayload = {
+  nombre: string;
+  identificacion_tributaria?: string | null;
+  correo_contacto: string;
+  telefono_contacto?: string | null;
+  esta_activa?: boolean;
+  password: string;
 };
 
 export type Technician = {
@@ -139,6 +150,7 @@ export type ServiceFilters = {
 };
 
 export type CreateServicePayload = {
+  empresa_cliente_id?: string | null;
   tipo_servicio: 1 | 2 | 3;
   placa_vehiculo?: string | null;
   latitud: number;
