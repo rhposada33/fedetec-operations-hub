@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, LogOut, Plus, RefreshCcw, Star } from "lucide-react";
+import { BarChart3, Building2, CheckCircle2, LogOut, Plus, RefreshCcw, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
-import { companyPortalApi } from "@/lib/api/client";
-import { formatDate, serviceTypeLabel } from "@/lib/api/format";
-import type { CreateServicePayload, Service } from "@/lib/api/types";
+import { ApiError, companyPortalApi } from "@/lib/api/client";
+import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
+import type { CreateServicePayload, Service, ServiceRating } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/empresa")({
@@ -38,6 +38,7 @@ function EmpresaPortal() {
     enabled: Boolean(token && isCompany),
     retry: false,
   });
+  const report = useCompanyReport(token, services.data ?? [], Boolean(token && isCompany));
 
   const createMutation = useMutation({
     mutationFn: () => {
@@ -96,6 +97,8 @@ function EmpresaPortal() {
             </Button>
           </div>
         </div>
+
+        <CompanyReport report={report} />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card>
@@ -200,6 +203,165 @@ function EmpresaPortal() {
 }
 
 const ESTADOS_CALIFICABLES = new Set(["FINALIZADO", "VALIDADO", "PAGO_GENERADO"]);
+
+function useCompanyReport(token: string | null, services: Service[], enabled: boolean) {
+  const eligibleServices = services.filter((service) => ESTADOS_CALIFICABLES.has(service.estado));
+  const ratingQueries = useQueries({
+    queries: eligibleServices.map((service) => ({
+      queryKey: ["company", "service-rating", service.id],
+      queryFn: async () => {
+        try {
+          return await companyPortalApi.rating(token!, service.id);
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 404) return null;
+          throw error;
+        }
+      },
+      enabled,
+      retry: false,
+    })),
+  });
+
+  const ratings = ratingQueries
+    .map((query) => query.data)
+    .filter((rating): rating is ServiceRating => Boolean(rating));
+  const total = services.length;
+  const completed = services.filter((service) => ESTADOS_CALIFICABLES.has(service.estado)).length;
+  const assigned = services.filter((service) => service.tecnico_aceptado_id).length;
+  const validated = services.filter((service) =>
+    ["VALIDADO", "PAGO_GENERADO"].includes(service.estado),
+  ).length;
+  const paid = services.filter((service) => service.estado === "PAGO_GENERADO").length;
+  const byStatus = services.reduce<Record<string, number>>((acc, service) => {
+    acc[service.estado] = (acc[service.estado] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    total,
+    active: services.filter((service) =>
+      ["CREADO", "DISPONIBLE", "ACEPTADO", "EN_PROCESO", "REPROGRAMACION_SOLICITADA"].includes(
+        service.estado,
+      ),
+    ).length,
+    assigned,
+    completed,
+    validated,
+    paid,
+    pendingRating: Math.max(eligibleServices.length - ratings.length, 0),
+    rated: ratings.length,
+    averageRating:
+      ratings.length > 0
+        ? ratings.reduce((totalRating, rating) => totalRating + rating.puntuacion, 0) /
+          ratings.length
+        : null,
+    completionRate: percentage(completed, total),
+    assignmentRate: percentage(assigned, total),
+    validationRate: percentage(validated, completed),
+    paymentRate: percentage(paid, completed),
+    ratingCoverage: percentage(ratings.length, eligibleServices.length),
+    byStatus,
+    isLoadingRatings: ratingQueries.some((query) => query.isLoading),
+  };
+}
+
+function CompanyReport({ report }: { report: ReturnType<typeof useCompanyReport> }) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <div>
+            <CardTitle>Reportes y cumplimiento</CardTitle>
+            <CardDescription>Resumen operativo de servicios y calificaciones.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Metric
+            label="Servicios"
+            value={String(report.total)}
+            hint={`${report.active} activos`}
+          />
+          <Metric label="Asignación" value={`${report.assignmentRate}%`} hint="Con técnico" />
+          <Metric
+            label="Finalización"
+            value={`${report.completionRate}%`}
+            hint={`${report.completed} cerrados`}
+          />
+          <Metric
+            label="Validación"
+            value={`${report.validationRate}%`}
+            hint={`${report.validated} validados`}
+          />
+          <Metric
+            label="Pago generado"
+            value={`${report.paymentRate}%`}
+            hint={`${report.paid} servicios`}
+          />
+          <Metric
+            label="Calificación"
+            value={report.averageRating == null ? "—" : `${report.averageRating.toFixed(1)}/5`}
+            hint={report.isLoadingRatings ? "Consultando..." : `${report.rated} calificadas`}
+          />
+          <Metric
+            label="Cobertura rating"
+            value={`${report.ratingCoverage}%`}
+            hint="Servicios calificables"
+          />
+          <Metric
+            label="Pendientes rating"
+            value={String(report.pendingRating)}
+            hint="Por calificar"
+          />
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            Distribución por estado
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(statusVariant).map(([status, meta]) => {
+              const total = report.byStatus[status] ?? 0;
+              if (total === 0) return null;
+              return (
+                <div key={status} className="rounded-lg border border-border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">{meta.label}</span>
+                    <span className="text-lg font-semibold">{total}</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${percentage(total, report.total)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+    </div>
+  );
+}
+
+function percentage(value: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((value / total) * 100);
+}
 
 function RatingCell({ token, service }: { token: string; service: Service }) {
   const queryClient = useQueryClient();
