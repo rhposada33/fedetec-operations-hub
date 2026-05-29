@@ -173,3 +173,19 @@ export type CreateServicePayload = {
   direccion?: string | null;
   fecha_programada: string;
 };
+
+export type ServiceRating = {
+  id: string;
+  servicio_id: string;
+  empresa_cliente_id: string;
+  tecnico_id: string;
+  puntuacion: number;
+  comentario: string | null;
+  fecha_calificacion: string;
+  fecha_creacion: string;
+};
+
+export type CreateServiceRatingPayload = {
+  puntuacion: number;
+  comentario?: string | null;
+};

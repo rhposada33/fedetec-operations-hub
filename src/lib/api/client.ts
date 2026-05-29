@@ -4,6 +4,7 @@ import type {
   CompanyCreated,
   CreateCompanyPayload,
   CreateServicePayload,
+  CreateServiceRatingPayload,
   CreateTechnicianPayload,
   CurrentUser,
   DashboardResponse,
@@ -13,6 +14,7 @@ import type {
   PublishedService,
   Service,
   ServiceFilters,
+  ServiceRating,
   Technician,
   TokenResponse,
 } from "./types";
@@ -170,6 +172,14 @@ export const servicesApi = {
       token,
       body: { valor },
     }),
+  rating: (token: string, id: string) =>
+    apiFetch<ServiceRating>(`/api/v1/servicios/${id}/calificaciones`, { token }),
+  createRating: (token: string, id: string, body: CreateServiceRatingPayload) =>
+    apiFetch<ServiceRating>(`/api/v1/servicios/${id}/calificaciones`, {
+      method: "POST",
+      token,
+      body,
+    }),
 };
 
 export const evidenceApi = {
@@ -211,4 +221,7 @@ export const companyPortalApi = {
   getService: (token: string, id: string) => servicesApi.get(token, id),
   createService: (token: string, idempotencyKey: string, body: CreateServicePayload) =>
     servicesApi.create(token, idempotencyKey, body),
+  rating: (token: string, id: string) => servicesApi.rating(token, id),
+  createRating: (token: string, id: string, body: CreateServiceRatingPayload) =>
+    servicesApi.createRating(token, id, body),
 };

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, LogOut, Plus, RefreshCcw } from "lucide-react";
+import { Building2, LogOut, Plus, RefreshCcw, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { companyPortalApi } from "@/lib/api/client";
 import { formatDate, serviceTypeLabel } from "@/lib/api/format";
-import type { CreateServicePayload } from "@/lib/api/types";
+import type { CreateServicePayload, Service } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/empresa")({
@@ -169,6 +169,7 @@ function EmpresaPortal() {
                         <th>Placa</th>
                         <th>Fecha</th>
                         <th>Estado</th>
+                        <th>Calificación</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -181,6 +182,9 @@ function EmpresaPortal() {
                           <td>
                             <StatusBadge status={service.estado} />
                           </td>
+                          <td className="min-w-[260px] py-3">
+                            <RatingCell token={token} service={service} />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -191,6 +195,85 @@ function EmpresaPortal() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+const ESTADOS_CALIFICABLES = new Set(["FINALIZADO", "VALIDADO", "PAGO_GENERADO"]);
+
+function RatingCell({ token, service }: { token: string; service: Service }) {
+  const queryClient = useQueryClient();
+  const [puntuacion, setPuntuacion] = useState(5);
+  const [comentario, setComentario] = useState("");
+
+  const rating = useQuery({
+    queryKey: ["company", "service-rating", service.id],
+    queryFn: () => companyPortalApi.rating(token, service.id),
+    enabled: ESTADOS_CALIFICABLES.has(service.estado),
+    retry: false,
+  });
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      companyPortalApi.createRating(token, service.id, {
+        puntuacion,
+        comentario: comentario.trim() || null,
+      }),
+    onSuccess: () => {
+      toast.success("Calificación registrada");
+      queryClient.invalidateQueries({ queryKey: ["company", "service-rating", service.id] });
+      setComentario("");
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible calificar"),
+  });
+
+  if (!ESTADOS_CALIFICABLES.has(service.estado)) {
+    return <span className="text-xs text-muted-foreground">Disponible al finalizar</span>;
+  }
+
+  if (rating.isLoading) {
+    return <span className="text-xs text-muted-foreground">Consultando...</span>;
+  }
+
+  if (rating.data) {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-1 text-xs font-medium text-success">
+          <Star className="h-3.5 w-3.5 fill-current" />
+          {rating.data.puntuacion}/5
+        </div>
+        {rating.data.comentario && (
+          <div className="max-w-xs text-xs text-muted-foreground">{rating.data.comentario}</div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <select
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          value={puntuacion}
+          onChange={(event) => setPuntuacion(Number(event.target.value))}
+        >
+          {[5, 4, 3, 2, 1].map((value) => (
+            <option key={value} value={value}>
+              {value}/5
+            </option>
+          ))}
+        </select>
+        <Button size="sm" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+          <Star className="mr-1.5 h-3.5 w-3.5" /> Calificar
+        </Button>
+      </div>
+      <Input
+        value={comentario}
+        onChange={(event) => setComentario(event.target.value)}
+        placeholder="Comentario opcional"
+        className="h-8 text-xs"
+      />
     </div>
   );
 }
