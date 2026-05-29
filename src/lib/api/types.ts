@@ -67,6 +67,21 @@ export type CreateCompanyPayload = {
   password: string;
 };
 
+export type CreateTechnicianPayload = {
+  correo: string;
+  contrasena: string;
+  nombre_completo: string;
+  telefono?: string | null;
+  numero_documento?: string | null;
+  ciudad?: string | null;
+  municipio?: string | null;
+  direccion?: string | null;
+  eps?: string | null;
+  arl?: string | null;
+  tiene_vehiculo: boolean;
+  placa_vehiculo?: string | null;
+};
+
 export type Technician = {
   id: string;
   usuario_id: string;

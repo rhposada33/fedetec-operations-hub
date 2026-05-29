@@ -4,6 +4,7 @@ import type {
   CompanyCreated,
   CreateCompanyPayload,
   CreateServicePayload,
+  CreateTechnicianPayload,
   CurrentUser,
   DashboardResponse,
   Evidence,
@@ -16,10 +17,7 @@ import type {
   TokenResponse,
 } from "./types";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(
-  /\/$/,
-  "",
-);
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -90,6 +88,11 @@ export async function login(username: string, password: string) {
 
 export const authApi = {
   me: (token: string) => apiFetch<CurrentUser>("/api/v1/autenticacion/yo", { token }),
+  registerTechnician: (body: CreateTechnicianPayload) =>
+    apiFetch<CurrentUser>("/api/v1/autenticacion/registro/tecnico", {
+      method: "POST",
+      body,
+    }),
 };
 
 export const adminApi = {
