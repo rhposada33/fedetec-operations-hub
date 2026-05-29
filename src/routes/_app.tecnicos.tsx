@@ -1,7 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { BadgeCheck, Clock, MapPin, Phone, Plus, Search, Star, XCircle } from "lucide-react";
+import {
+  BadgeCheck,
+  Clock,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Search,
+  Star,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { adminApi, ApiError, authApi } from "@/lib/api/client";
 import { formatDate } from "@/lib/api/format";
-import type { CreateTechnicianPayload, Technician } from "@/lib/api/types";
+import type { CreateTechnicianPayload, Technician, UpdateTechnicianPayload } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/tecnicos")({
@@ -27,6 +37,9 @@ function TecnicosPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(() => crearFormularioTecnico());
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<Technician | null>(null);
+  const [editForm, setEditForm] = useState(() => crearFormularioEditarTecnico());
   const technicians = useQuery({
     queryKey: ["admin", "technicians"],
     queryFn: () => adminApi.technicians(token!),
@@ -47,6 +60,31 @@ function TecnicosPage() {
         return;
       }
       toast.error(error instanceof Error ? error.message : "No fue posible crear el técnico");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (!editing) throw new Error("Técnico no seleccionado");
+      return adminApi.updateTechnician(
+        token!,
+        editing.id,
+        construirPayloadActualizarTecnico(editForm),
+      );
+    },
+    onSuccess: (tech) => {
+      toast.success(`Técnico actualizado: ${tech.correo}`);
+      setEditing(null);
+      setEditOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["admin", "technicians"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "technician-metrics", tech.id] });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.error("No fue posible actualizar. Revisa si el correo ya existe.");
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : "No fue posible actualizar el técnico");
     },
   });
 
@@ -85,7 +123,16 @@ function TecnicosPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((tech) => (
-          <TechnicianCard key={tech.id} tech={tech} token={token!} />
+          <TechnicianCard
+            key={tech.id}
+            tech={tech}
+            token={token!}
+            onEdit={() => {
+              setEditing(tech);
+              setEditForm(crearFormularioEditarTecnico(tech));
+              setEditOpen(true);
+            }}
+          />
         ))}
       </div>
 
@@ -171,11 +218,41 @@ function TecnicosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(value) => {
+          setEditOpen(value);
+          if (!value) setEditing(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar técnico</DialogTitle>
+          </DialogHeader>
+          <TecnicoEditForm form={editForm} setForm={setEditForm} />
+          <Button
+            className="w-full"
+            disabled={!formularioEditarTecnicoValido(editForm) || updateMutation.isPending}
+            onClick={() => updateMutation.mutate()}
+          >
+            <Pencil className="mr-2 h-4 w-4" /> Guardar cambios
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function TechnicianCard({ tech, token }: { tech: Technician; token: string }) {
+function TechnicianCard({
+  tech,
+  token,
+  onEdit,
+}: {
+  tech: Technician;
+  token: string;
+  onEdit: () => void;
+}) {
   const metrics = useQuery({
     queryKey: ["admin", "technician-metrics", tech.id],
     queryFn: () => adminApi.technicianMetrics(token, tech.id),
@@ -185,7 +262,7 @@ function TechnicianCard({ tech, token }: { tech: Technician; token: string }) {
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-12 w-12">
               <AvatarFallback className="bg-primary/15 text-primary">
@@ -201,11 +278,16 @@ function TechnicianCard({ tech, token }: { tech: Technician; token: string }) {
               <div className="truncate text-xs text-muted-foreground">{tech.correo}</div>
             </div>
           </div>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${tech.esta_disponible ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
-          >
-            {tech.esta_disponible ? "Disponible" : "No disponible"}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tech.esta_disponible ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
+            >
+              {tech.esta_disponible ? "Disponible" : "No disponible"}
+            </span>
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
           <Stat icon={Phone} label="Teléfono" value={tech.telefono ?? "—"} />
@@ -245,6 +327,97 @@ function TechnicianCard({ tech, token }: { tech: Technician; token: string }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function TecnicoEditForm({
+  form,
+  setForm,
+}: {
+  form: TecnicoEditFormState;
+  setForm: (form: TecnicoEditFormState) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Field
+        label="Nombre completo"
+        value={form.nombre_completo}
+        onChange={(value) => setForm({ ...form, nombre_completo: value })}
+      />
+      <Field
+        label="Correo"
+        type="email"
+        value={form.correo}
+        onChange={(value) => setForm({ ...form, correo: value })}
+      />
+      <Field
+        label="Teléfono"
+        value={form.telefono}
+        onChange={(value) => setForm({ ...form, telefono: value })}
+      />
+      <Field
+        label="Documento"
+        value={form.numero_documento}
+        onChange={(value) => setForm({ ...form, numero_documento: value })}
+      />
+      <Field
+        label="Ciudad"
+        value={form.ciudad}
+        onChange={(value) => setForm({ ...form, ciudad: value })}
+      />
+      <Field
+        label="Municipio"
+        value={form.municipio}
+        onChange={(value) => setForm({ ...form, municipio: value })}
+      />
+      <Field label="EPS" value={form.eps} onChange={(value) => setForm({ ...form, eps: value })} />
+      <Field label="ARL" value={form.arl} onChange={(value) => setForm({ ...form, arl: value })} />
+      <Field
+        label="Placa vehículo"
+        value={form.placa_vehiculo}
+        onChange={(value) => setForm({ ...form, placa_vehiculo: value })}
+      />
+      <Field
+        label="Latitud GPS"
+        type="number"
+        value={form.latitud}
+        onChange={(value) => setForm({ ...form, latitud: value })}
+      />
+      <Field
+        label="Longitud GPS"
+        type="number"
+        value={form.longitud}
+        onChange={(value) => setForm({ ...form, longitud: value })}
+      />
+      <div className="flex items-center justify-between rounded-md border border-border p-3">
+        <Label>Tiene vehículo</Label>
+        <Switch
+          checked={form.tiene_vehiculo}
+          onCheckedChange={(checked) => setForm({ ...form, tiene_vehiculo: checked })}
+        />
+      </div>
+      <div className="flex items-center justify-between rounded-md border border-border p-3">
+        <Label>Disponible</Label>
+        <Switch
+          checked={form.esta_disponible}
+          onCheckedChange={(checked) => setForm({ ...form, esta_disponible: checked })}
+        />
+      </div>
+      <div className="flex items-center justify-between rounded-md border border-border p-3">
+        <Label>Usuario activo</Label>
+        <Switch
+          checked={form.esta_activo}
+          onCheckedChange={(checked) => setForm({ ...form, esta_activo: checked })}
+        />
+      </div>
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>Dirección</Label>
+        <Input
+          value={form.direccion}
+          onChange={(event) => setForm({ ...form, direccion: event.target.value })}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -297,6 +470,24 @@ type TecnicoForm = {
   placa_vehiculo: string;
 };
 
+type TecnicoEditFormState = {
+  correo: string;
+  nombre_completo: string;
+  telefono: string;
+  numero_documento: string;
+  ciudad: string;
+  municipio: string;
+  direccion: string;
+  eps: string;
+  arl: string;
+  tiene_vehiculo: boolean;
+  placa_vehiculo: string;
+  esta_activo: boolean;
+  esta_disponible: boolean;
+  latitud: string;
+  longitud: string;
+};
+
 function crearFormularioTecnico(): TecnicoForm {
   return {
     correo: "",
@@ -314,12 +505,45 @@ function crearFormularioTecnico(): TecnicoForm {
   };
 }
 
+function crearFormularioEditarTecnico(tech?: Technician): TecnicoEditFormState {
+  return {
+    correo: tech?.correo ?? "",
+    nombre_completo: tech?.nombre_completo ?? "",
+    telefono: tech?.telefono ?? "",
+    numero_documento: tech?.numero_documento ?? "",
+    ciudad: tech?.ciudad ?? "",
+    municipio: tech?.municipio ?? "",
+    direccion: tech?.direccion ?? "",
+    eps: tech?.eps ?? "",
+    arl: tech?.arl ?? "",
+    tiene_vehiculo: tech?.tiene_vehiculo ?? false,
+    placa_vehiculo: tech?.placa_vehiculo ?? "",
+    esta_activo: tech?.esta_activo ?? true,
+    esta_disponible: tech?.esta_disponible ?? true,
+    latitud: tech?.latitud?.toString() ?? "",
+    longitud: tech?.longitud?.toString() ?? "",
+  };
+}
+
 function formularioTecnicoValido(form: TecnicoForm) {
   return (
     form.nombre_completo.trim().length > 0 &&
     form.correo.trim().length > 0 &&
     form.contrasena.length >= 8
   );
+}
+
+function formularioEditarTecnicoValido(form: TecnicoEditFormState) {
+  const tieneLatitud = form.latitud.trim().length > 0;
+  const tieneLongitud = form.longitud.trim().length > 0;
+  const gpsValido =
+    (!tieneLatitud && !tieneLongitud) ||
+    (tieneLatitud &&
+      tieneLongitud &&
+      Number.isFinite(Number(form.latitud)) &&
+      Number.isFinite(Number(form.longitud)));
+
+  return form.nombre_completo.trim().length > 0 && form.correo.trim().length > 0 && gpsValido;
 }
 
 function construirPayloadTecnico(form: TecnicoForm): CreateTechnicianPayload {
@@ -337,4 +561,29 @@ function construirPayloadTecnico(form: TecnicoForm): CreateTechnicianPayload {
     tiene_vehiculo: form.tiene_vehiculo,
     placa_vehiculo: form.placa_vehiculo.trim() || null,
   };
+}
+
+function construirPayloadActualizarTecnico(form: TecnicoEditFormState): UpdateTechnicianPayload {
+  const payload: UpdateTechnicianPayload = {
+    correo: form.correo.trim(),
+    nombre_completo: form.nombre_completo.trim(),
+    telefono: form.telefono.trim() || null,
+    numero_documento: form.numero_documento.trim() || null,
+    ciudad: form.ciudad.trim() || null,
+    municipio: form.municipio.trim() || null,
+    direccion: form.direccion.trim() || null,
+    eps: form.eps.trim() || null,
+    arl: form.arl.trim() || null,
+    tiene_vehiculo: form.tiene_vehiculo,
+    placa_vehiculo: form.placa_vehiculo.trim() || null,
+    esta_activo: form.esta_activo,
+    esta_disponible: form.esta_disponible,
+  };
+
+  if (form.latitud.trim() || form.longitud.trim()) {
+    payload.latitud = Number(form.latitud);
+    payload.longitud = Number(form.longitud);
+  }
+
+  return payload;
 }

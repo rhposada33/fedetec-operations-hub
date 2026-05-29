@@ -20,6 +20,7 @@ import type {
   TechnicianServiceNotification,
   TokenResponse,
   UpdateServicePayload,
+  UpdateTechnicianPayload,
 } from "./types";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
@@ -110,6 +111,12 @@ export const adminApi = {
   technicianMetrics: (token: string, tecnicoId: string) =>
     apiFetch<TechnicianPerformanceMetrics>(`/api/v1/admin/tecnicos/${tecnicoId}/metricas`, {
       token,
+    }),
+  updateTechnician: (token: string, tecnicoId: string, body: UpdateTechnicianPayload) =>
+    apiFetch<Technician>(`/api/v1/admin/tecnicos/${tecnicoId}`, {
+      method: "PATCH",
+      token,
+      body,
     }),
   companies: (token: string, esta_activa?: boolean | null) =>
     apiFetch<Company[]>(`/api/v1/admin/empresas-cliente${buildQuery({ esta_activa })}`, {

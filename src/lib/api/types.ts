@@ -88,6 +88,15 @@ export type Technician = {
   nombre_completo: string;
   correo: string;
   telefono: string | null;
+  numero_documento: string | null;
+  ciudad: string | null;
+  municipio: string | null;
+  direccion: string | null;
+  eps: string | null;
+  arl: string | null;
+  tiene_vehiculo: boolean;
+  placa_vehiculo: string | null;
+  esta_activo: boolean;
   esta_disponible: boolean;
   latitud: number | null;
   longitud: number | null;
@@ -101,6 +110,24 @@ export type TechnicianPerformanceMetrics = {
   servicios_completados: number;
   servicios_aceptados: number;
   servicios_rechazados: number;
+};
+
+export type UpdateTechnicianPayload = {
+  nombre_completo?: string | null;
+  correo?: string | null;
+  telefono?: string | null;
+  numero_documento?: string | null;
+  ciudad?: string | null;
+  municipio?: string | null;
+  direccion?: string | null;
+  eps?: string | null;
+  arl?: string | null;
+  tiene_vehiculo?: boolean;
+  placa_vehiculo?: string | null;
+  esta_activo?: boolean;
+  esta_disponible?: boolean;
+  latitud?: number | null;
+  longitud?: number | null;
 };
 
 export type NearbyTechnician = Technician & {
