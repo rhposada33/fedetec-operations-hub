@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { LogOut, MapPin, Play, SquareCheck, Upload, CalendarClock, X } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  LogOut,
+  MapPin,
+  Play,
+  RefreshCw,
+  SquareCheck,
+  Upload,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { servicesApi, technicianApi } from "@/lib/api/client";
 import { formatDate } from "@/lib/api/format";
+import type { Service } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/tecnico")({
@@ -23,16 +34,27 @@ function TecnicoPortal() {
   const { token, user, isTechnician, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [serviceId, setServiceId] = useState("");
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [latitud, setLatitud] = useState("");
   const [longitud, setLongitud] = useState("");
   const [motivo, setMotivo] = useState("");
   const [fechaPropuesta, setFechaPropuesta] = useState("");
   const [evidence, setEvidence] = useState({ url_archivo: "", tipo_archivo: "", descripcion: "" });
+  const selectedServiceId = selectedService?.id ?? "";
 
   const me = useQuery({
     queryKey: ["technician", "me"],
     queryFn: () => technicianApi.me(token!),
+    enabled: Boolean(token && isTechnician),
+  });
+  const availableServices = useQuery({
+    queryKey: ["technician", "available-services"],
+    queryFn: () => technicianApi.availableServices(token!),
+    enabled: Boolean(token && isTechnician),
+  });
+  const notifications = useQuery({
+    queryKey: ["technician", "notifications"],
+    queryFn: () => technicianApi.notifications(token!),
     enabled: Boolean(token && isTechnician),
   });
 
@@ -53,18 +75,40 @@ function TecnicoPortal() {
   });
   const actionMutation = useMutation({
     mutationFn: (action: "accept" | "reject" | "reschedule" | "start" | "finish" | "evidence") => {
-      if (action === "accept") return servicesApi.accept(token!, serviceId);
-      if (action === "reject") return servicesApi.reject(token!, serviceId, motivo);
+      if (action === "accept") return servicesApi.accept(token!, selectedServiceId);
+      if (action === "reject") return servicesApi.reject(token!, selectedServiceId, motivo);
       if (action === "reschedule")
-        return servicesApi.reschedule(token!, serviceId, fechaPropuesta, motivo);
-      if (action === "start") return servicesApi.start(token!, serviceId);
-      if (action === "finish") return servicesApi.finish(token!, serviceId);
-      return servicesApi.createEvidence(token!, serviceId, evidence);
+        return servicesApi.reschedule(token!, selectedServiceId, fechaPropuesta, motivo);
+      if (action === "start") return servicesApi.start(token!, selectedServiceId);
+      if (action === "finish") return servicesApi.finish(token!, selectedServiceId);
+      return servicesApi.createEvidence(token!, selectedServiceId, evidence);
     },
-    onSuccess: () => toast.success("Acción ejecutada"),
+    onSuccess: async (service) => {
+      toast.success("Acción ejecutada");
+      if (
+        service &&
+        typeof service === "object" &&
+        "estado" in service &&
+        "empresa_cliente_id" in service
+      ) {
+        setSelectedService(service as Service);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["technician", "available-services"] }),
+        queryClient.invalidateQueries({ queryKey: ["technician", "notifications"] }),
+      ]);
+    },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "No fue posible ejecutar la acción"),
   });
+
+  const availableServiceIds = new Set((availableServices.data ?? []).map((service) => service.id));
+  const operationalServices = (notifications.data ?? [])
+    .map((notification) => notification.servicio)
+    .filter((service) => !availableServiceIds.has(service.id))
+    .filter((service) =>
+      ["ACEPTADO", "EN_PROCESO", "REPROGRAMACION_SOLICITADA"].includes(service.estado),
+    );
 
   if (!token || !isTechnician) {
     return (
@@ -100,7 +144,7 @@ function TecnicoPortal() {
       ) : me.isError ? (
         <ErrorState error={me.error} onRetry={() => me.refetch()} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle>{user?.nombre_completo}</CardTitle>
@@ -147,11 +191,40 @@ function TecnicoPortal() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Acciones de servicio</CardTitle>
-              <CardDescription>Ingresa el ID del servicio asignado o publicado.</CardDescription>
+              <CardTitle>Servicio seleccionado</CardTitle>
+              <CardDescription>
+                Usa la bandeja para seleccionar un servicio y ejecutar acciones.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Field label="Servicio ID" value={serviceId} onChange={setServiceId} />
+              {selectedService ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {selectedService.id}
+                        </div>
+                        <div className="mt-1 font-semibold">
+                          {serviceTypeLabel(selectedService.tipo_servicio)}
+                        </div>
+                      </div>
+                      <StatusBadge status={selectedService.estado} />
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <Info label="Placa" value={selectedService.placa_vehiculo ?? "—"} />
+                      <Info
+                        label="Programado"
+                        value={formatDate(selectedService.fecha_programada)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  Selecciona un servicio desde la bandeja.
+                </div>
+              )}
               <Textarea
                 placeholder="Motivo para rechazo/reprogramación"
                 value={motivo}
@@ -163,33 +236,41 @@ function TecnicoPortal() {
                 onChange={setFechaPropuesta}
               />
               <div className="grid grid-cols-2 gap-2">
-                <Button disabled={!serviceId} onClick={() => actionMutation.mutate("accept")}>
+                <Button
+                  disabled={!selectedServiceId || selectedService?.estado !== "DISPONIBLE"}
+                  onClick={() => actionMutation.mutate("accept")}
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
                   Aceptar
                 </Button>
                 <Button
                   variant="destructive"
-                  disabled={!serviceId}
+                  disabled={!selectedServiceId || selectedService?.estado !== "DISPONIBLE"}
                   onClick={() => actionMutation.mutate("reject")}
                 >
                   <X className="mr-2 h-4 w-4" /> Rechazar
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={!serviceId || !fechaPropuesta}
+                  disabled={
+                    !selectedServiceId ||
+                    !fechaPropuesta ||
+                    !["DISPONIBLE", "ACEPTADO"].includes(selectedService?.estado ?? "")
+                  }
                   onClick={() => actionMutation.mutate("reschedule")}
                 >
                   <CalendarClock className="mr-2 h-4 w-4" /> Reprogramar
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={!serviceId}
+                  disabled={!selectedServiceId || selectedService?.estado !== "ACEPTADO"}
                   onClick={() => actionMutation.mutate("start")}
                 >
                   <Play className="mr-2 h-4 w-4" /> Iniciar
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={!serviceId}
+                  disabled={!selectedServiceId || selectedService?.estado !== "EN_PROCESO"}
                   onClick={() => actionMutation.mutate("finish")}
                 >
                   <SquareCheck className="mr-2 h-4 w-4" /> Finalizar
@@ -200,12 +281,96 @@ function TecnicoPortal() {
         </div>
       )}
 
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>Bandeja de servicios</CardTitle>
+              <CardDescription>Servicios disponibles para aceptar o rechazar.</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                availableServices.refetch();
+                notifications.refetch();
+              }}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Actualizar
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {availableServices.isLoading ? (
+              <LoadingState label="Cargando servicios disponibles..." />
+            ) : availableServices.isError ? (
+              <ErrorState
+                error={availableServices.error}
+                onRetry={() => availableServices.refetch()}
+              />
+            ) : availableServices.data?.length ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {availableServices.data.map((service) => (
+                  <ServiceInboxCard
+                    key={service.id}
+                    service={service}
+                    selected={selectedServiceId === service.id}
+                    onSelect={() => setSelectedService(service)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                No hay servicios disponibles para tu perfil.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Servicios en curso</CardTitle>
+            <CardDescription>
+              Servicios aceptados o en proceso desde tus notificaciones.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {notifications.isLoading ? (
+              <LoadingState label="Cargando notificaciones..." />
+            ) : notifications.isError ? (
+              <ErrorState error={notifications.error} onRetry={() => notifications.refetch()} />
+            ) : operationalServices.length ? (
+              <div className="space-y-3">
+                {operationalServices.map((service) => (
+                  <ServiceInboxCard
+                    key={service.id}
+                    service={service}
+                    selected={selectedServiceId === service.id}
+                    onSelect={() => setSelectedService(service)}
+                    compact
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                No tienes servicios aceptados o en proceso.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Subir evidencia</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Field label="Servicio ID" value={serviceId} onChange={setServiceId} />
+          <div className="space-y-1.5">
+            <Label>Servicio</Label>
+            <div className="flex h-10 items-center rounded-md border border-border bg-muted/30 px-3 font-mono text-xs">
+              {selectedServiceId || "Selecciona un servicio"}
+            </div>
+          </div>
           <Field
             label="URL archivo"
             value={evidence.url_archivo}
@@ -223,7 +388,7 @@ function TecnicoPortal() {
           />
           <Button
             className="md:col-span-4"
-            disabled={!serviceId || !evidence.url_archivo}
+            disabled={!selectedServiceId || !evidence.url_archivo}
             onClick={() => actionMutation.mutate("evidence")}
           >
             <Upload className="mr-2 h-4 w-4" /> Registrar evidencia
@@ -232,6 +397,68 @@ function TecnicoPortal() {
       </Card>
     </PortalShell>
   );
+}
+
+function ServiceInboxCard({
+  service,
+  selected,
+  onSelect,
+  compact = false,
+}: {
+  service: Service;
+  selected: boolean;
+  onSelect: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-lg border p-3 text-left transition hover:border-primary hover:bg-primary/5 ${
+        selected ? "border-primary bg-primary/5" : "border-border bg-surface"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-mono text-xs text-muted-foreground">{service.id}</div>
+          <div className="mt-1 font-semibold text-text">
+            {serviceTypeLabel(service.tipo_servicio)}
+          </div>
+        </div>
+        <StatusBadge status={service.estado} />
+      </div>
+      <div className={`mt-3 grid gap-2 text-xs ${compact ? "grid-cols-1" : "grid-cols-2"}`}>
+        <Info label="Programado" value={formatDate(service.fecha_programada)} />
+        {!compact && <Info label="Placa" value={service.placa_vehiculo ?? "—"} />}
+        <Info label="Dirección" value={service.direccion ?? "—"} />
+        {!compact && <Info label="Empresa" value={service.empresa_cliente_id.slice(0, 8)} />}
+      </div>
+    </button>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const tone =
+    status === "DISPONIBLE"
+      ? "bg-secondary/10 text-secondary"
+      : status === "ACEPTADO"
+        ? "bg-success/10 text-success"
+        : status === "EN_PROCESO"
+          ? "bg-warning/10 text-warning"
+          : "bg-muted text-muted-foreground";
+
+  return (
+    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${tone}`}>
+      {status.replaceAll("_", " ")}
+    </span>
+  );
+}
+
+function serviceTypeLabel(type: number) {
+  if (type === 1) return "Instalación";
+  if (type === 2) return "Mantenimiento";
+  if (type === 3) return "Soporte";
+  return `Tipo ${type}`;
 }
 
 function PortalShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {

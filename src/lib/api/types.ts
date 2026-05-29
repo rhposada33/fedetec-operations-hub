@@ -114,8 +114,19 @@ export type Service = {
   fecha_aceptacion: string | null;
   fecha_inicio: string | null;
   fecha_finalizacion: string | null;
+  fecha_validacion?: string | null;
   fecha_creacion: string;
   fecha_actualizacion: string;
+};
+
+export type TechnicianServiceNotification = {
+  id: string;
+  servicio_id: string;
+  tecnico_id: string;
+  estado: "ENVIADA" | "LEIDA" | "ACEPTADA" | "RECHAZADA" | string;
+  fecha_envio: string;
+  fecha_lectura: string | null;
+  servicio: Service;
 };
 
 export type PublishedService = Service & {

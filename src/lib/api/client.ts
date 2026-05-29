@@ -16,6 +16,7 @@ import type {
   ServiceFilters,
   ServiceRating,
   Technician,
+  TechnicianServiceNotification,
   TokenResponse,
 } from "./types";
 
@@ -208,6 +209,12 @@ export const technicianApi = {
       method: "PATCH",
       token,
       body: { esta_disponible },
+    }),
+  availableServices: (token: string) =>
+    apiFetch<Service[]>("/api/v1/tecnicos/yo/servicios-disponibles", { token }),
+  notifications: (token: string) =>
+    apiFetch<TechnicianServiceNotification[]>("/api/v1/tecnicos/yo/notificaciones", {
+      token,
     }),
   nearby: (token: string, latitud: number, longitud: number, radio_metros = 10000) =>
     apiFetch<NearbyTechnician[]>(

@@ -40,20 +40,40 @@ function ServiciosPage() {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
+  const [empresaClienteId, setEmpresaClienteId] = useState("all");
+  const [tecnicoId, setTecnicoId] = useState("all");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
   const [selected, setSelected] = useState<Service | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState(() => crearFormularioServicio());
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const serviceFilters = useMemo(
+    () => ({
+      estado: status === "all" ? undefined : status,
+      empresa_cliente_id: empresaClienteId === "all" ? undefined : empresaClienteId,
+      tecnico_id: tecnicoId === "all" ? undefined : tecnicoId,
+      fecha_desde: fechaDesde ? new Date(fechaDesde).toISOString() : undefined,
+      fecha_hasta: fechaHasta ? new Date(fechaHasta).toISOString() : undefined,
+    }),
+    [empresaClienteId, fechaDesde, fechaHasta, status, tecnicoId],
+  );
 
   const servicesQuery = useQuery({
-    queryKey: ["admin", "services", status],
-    queryFn: () => adminApi.services(token!, status === "all" ? {} : { estado: status }),
+    queryKey: ["admin", "services", serviceFilters],
+    queryFn: () => adminApi.services(token!, serviceFilters),
     enabled: Boolean(token),
   });
 
   const companiesQuery = useQuery({
     queryKey: ["admin", "companies"],
     queryFn: () => adminApi.companies(token!, true),
+    enabled: Boolean(token),
+  });
+
+  const techniciansQuery = useQuery({
+    queryKey: ["admin", "technicians"],
+    queryFn: () => adminApi.technicians(token!),
     enabled: Boolean(token),
   });
 
@@ -150,6 +170,64 @@ function ServiciosPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={empresaClienteId} onValueChange={setEmpresaClienteId}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las empresas</SelectItem>
+                {(companiesQuery.data ?? []).map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={tecnicoId} onValueChange={setTecnicoId}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Técnico" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los técnicos</SelectItem>
+                {(techniciansQuery.data ?? []).map((technician) => (
+                  <SelectItem key={technician.id} value={technician.id}>
+                    {technician.nombre_completo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Desde</Label>
+              <Input
+                type="date"
+                className="w-[160px]"
+                value={fechaDesde}
+                onChange={(event) => setFechaDesde(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Hasta</Label>
+              <Input
+                type="date"
+                className="w-[160px]"
+                value={fechaHasta}
+                onChange={(event) => setFechaHasta(event.target.value)}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setStatus("all");
+                setEmpresaClienteId("all");
+                setTecnicoId("all");
+                setFechaDesde("");
+                setFechaHasta("");
+                setQ("");
+              }}
+            >
+              Limpiar
+            </Button>
             <Button variant="outline" size="sm" onClick={() => servicesQuery.refetch()}>
               <Filter className="mr-2 h-4 w-4" /> Actualizar
             </Button>
