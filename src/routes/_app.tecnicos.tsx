@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { MapPin, Phone, Search, Clock, Plus } from "lucide-react";
+import { BadgeCheck, Clock, MapPin, Phone, Plus, Search, Star, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { adminApi, ApiError, authApi } from "@/lib/api/client";
 import { formatDate } from "@/lib/api/format";
-import type { CreateTechnicianPayload } from "@/lib/api/types";
+import type { CreateTechnicianPayload, Technician } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/tecnicos")({
@@ -85,42 +85,7 @@ function TecnicosPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((tech) => (
-          <Card key={tech.id}>
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-primary/15 text-primary">
-                      {tech.nombre_completo
-                        .split(" ")
-                        .map((n) => n[0])
-                        .slice(0, 2)
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-semibold">{tech.nombre_completo}</div>
-                    <div className="text-xs text-muted-foreground">{tech.correo}</div>
-                  </div>
-                </div>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tech.esta_disponible ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
-                >
-                  {tech.esta_disponible ? "Disponible" : "No disponible"}
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                <Stat icon={Phone} label="Teléfono" value={tech.telefono ?? "—"} />
-                <Stat
-                  icon={Clock}
-                  label="Último GPS"
-                  value={formatDate(tech.fecha_ultima_ubicacion)}
-                />
-                <Stat icon={MapPin} label="Latitud" value={tech.latitud?.toString() ?? "—"} />
-                <Stat icon={MapPin} label="Longitud" value={tech.longitud?.toString() ?? "—"} />
-              </div>
-            </CardContent>
-          </Card>
+          <TechnicianCard key={tech.id} tech={tech} token={token!} />
         ))}
       </div>
 
@@ -210,6 +175,79 @@ function TecnicosPage() {
   );
 }
 
+function TechnicianCard({ tech, token }: { tech: Technician; token: string }) {
+  const metrics = useQuery({
+    queryKey: ["admin", "technician-metrics", tech.id],
+    queryFn: () => adminApi.technicianMetrics(token, tech.id),
+    enabled: Boolean(token),
+  });
+
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="h-12 w-12">
+              <AvatarFallback className="bg-primary/15 text-primary">
+                {tech.nombre_completo
+                  .split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="truncate font-semibold">{tech.nombre_completo}</div>
+              <div className="truncate text-xs text-muted-foreground">{tech.correo}</div>
+            </div>
+          </div>
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${tech.esta_disponible ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
+          >
+            {tech.esta_disponible ? "Disponible" : "No disponible"}
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+          <Stat icon={Phone} label="Teléfono" value={tech.telefono ?? "—"} />
+          <Stat icon={Clock} label="Último GPS" value={formatDate(tech.fecha_ultima_ubicacion)} />
+          <Stat icon={MapPin} label="Latitud" value={tech.latitud?.toString() ?? "—"} />
+          <Stat icon={MapPin} label="Longitud" value={tech.longitud?.toString() ?? "—"} />
+        </div>
+        <div className="mt-4 border-t border-border pt-4">
+          {metrics.isLoading ? (
+            <div className="text-xs text-muted-foreground">Cargando rendimiento...</div>
+          ) : metrics.isError ? (
+            <div className="text-xs text-danger">No fue posible cargar rendimiento.</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <Stat
+                icon={Star}
+                label="Calificación"
+                value={formatRating(metrics.data?.calificacion_promedio)}
+              />
+              <Stat
+                icon={BadgeCheck}
+                label="Completados"
+                value={String(metrics.data?.servicios_completados ?? 0)}
+              />
+              <Stat
+                icon={Clock}
+                label="Aceptados"
+                value={String(metrics.data?.servicios_aceptados ?? 0)}
+              />
+              <Stat
+                icon={XCircle}
+                label="Rechazados"
+                value={String(metrics.data?.servicios_rechazados ?? 0)}
+              />
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Field({
   label,
   value,
@@ -238,6 +276,10 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Phone; label: string;
       <div className="mt-0.5 font-medium">{value}</div>
     </div>
   );
+}
+
+function formatRating(value: number | null | undefined) {
+  return value == null ? "—" : `${value.toFixed(1)}/5`;
 }
 
 type TecnicoForm = {

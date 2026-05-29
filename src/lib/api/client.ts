@@ -16,6 +16,7 @@ import type {
   ServiceFilters,
   ServiceRating,
   Technician,
+  TechnicianPerformanceMetrics,
   TechnicianServiceNotification,
   TokenResponse,
 } from "./types";
@@ -105,6 +106,10 @@ export const adminApi = {
     apiFetch<Service[]>(`/api/v1/admin/servicios${buildQuery(filters)}`, { token }),
   technicians: (token: string, esta_disponible?: boolean | null) =>
     apiFetch<Technician[]>(`/api/v1/admin/tecnicos${buildQuery({ esta_disponible })}`, { token }),
+  technicianMetrics: (token: string, tecnicoId: string) =>
+    apiFetch<TechnicianPerformanceMetrics>(`/api/v1/admin/tecnicos/${tecnicoId}/metricas`, {
+      token,
+    }),
   companies: (token: string, esta_activa?: boolean | null) =>
     apiFetch<Company[]>(`/api/v1/admin/empresas-cliente${buildQuery({ esta_activa })}`, {
       token,
@@ -198,6 +203,8 @@ export const paymentsApi = {
 
 export const technicianApi = {
   me: (token: string) => apiFetch<Technician>("/api/v1/tecnicos/yo", { token }),
+  metrics: (token: string) =>
+    apiFetch<TechnicianPerformanceMetrics>("/api/v1/tecnicos/yo/metricas", { token }),
   updateLocation: (token: string, latitud: number, longitud: number) =>
     apiFetch<Technician>("/api/v1/tecnicos/yo/ubicacion", {
       method: "PATCH",

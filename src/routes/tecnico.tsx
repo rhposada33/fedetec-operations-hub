@@ -57,6 +57,11 @@ function TecnicoPortal() {
     queryFn: () => technicianApi.notifications(token!),
     enabled: Boolean(token && isTechnician),
   });
+  const metrics = useQuery({
+    queryKey: ["technician", "metrics"],
+    queryFn: () => technicianApi.metrics(token!),
+    enabled: Boolean(token && isTechnician),
+  });
 
   const availabilityMutation = useMutation({
     mutationFn: (value: boolean) => technicianApi.updateAvailability(token!, value),
@@ -144,7 +149,7 @@ function TecnicoPortal() {
       ) : me.isError ? (
         <ErrorState error={me.error} onRetry={() => me.refetch()} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
           <Card>
             <CardHeader>
               <CardTitle>{user?.nombre_completo}</CardTitle>
@@ -169,6 +174,36 @@ function TecnicoPortal() {
                 <Info label="Último GPS" value={formatDate(me.data?.fecha_ultima_ubicacion)} />
                 <Info label="Teléfono" value={me.data?.telefono ?? "—"} />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Rendimiento</CardTitle>
+              <CardDescription>Calificación y actividad acumulada.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {metrics.isLoading ? (
+                <div className="text-sm text-muted-foreground">Cargando métricas...</div>
+              ) : metrics.isError ? (
+                <div className="text-sm text-danger">No fue posible cargar rendimiento.</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <Info
+                    label="Calificación"
+                    value={formatRating(metrics.data?.calificacion_promedio)}
+                  />
+                  <Info
+                    label="Completados"
+                    value={String(metrics.data?.servicios_completados ?? 0)}
+                  />
+                  <Info label="Aceptados" value={String(metrics.data?.servicios_aceptados ?? 0)} />
+                  <Info
+                    label="Rechazados"
+                    value={String(metrics.data?.servicios_rechazados ?? 0)}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -397,6 +432,10 @@ function TecnicoPortal() {
       </Card>
     </PortalShell>
   );
+}
+
+function formatRating(value: number | null | undefined) {
+  return value == null ? "—" : `${value.toFixed(1)}/5`;
 }
 
 function ServiceInboxCard({

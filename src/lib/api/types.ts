@@ -95,6 +95,14 @@ export type Technician = {
   fecha_creacion: string;
 };
 
+export type TechnicianPerformanceMetrics = {
+  tecnico_id: string;
+  calificacion_promedio: number | null;
+  servicios_completados: number;
+  servicios_aceptados: number;
+  servicios_rechazados: number;
+};
+
 export type NearbyTechnician = Technician & {
   distancia_metros: number;
 };
