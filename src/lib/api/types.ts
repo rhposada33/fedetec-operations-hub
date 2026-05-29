@@ -193,6 +193,8 @@ export type CreateServicePayload = {
   fecha_programada: string;
 };
 
+export type UpdateServicePayload = Partial<CreateServicePayload>;
+
 export type ServiceRating = {
   id: string;
   servicio_id: string;

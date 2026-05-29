@@ -19,6 +19,7 @@ import type {
   TechnicianPerformanceMetrics,
   TechnicianServiceNotification,
   TokenResponse,
+  UpdateServicePayload,
 } from "./types";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
@@ -145,6 +146,12 @@ export const servicesApi = {
     }),
   list: (token: string) => apiFetch<Service[]>("/api/v1/servicios", { token }),
   get: (token: string, id: string) => apiFetch<Service>(`/api/v1/servicios/${id}`, { token }),
+  update: (token: string, id: string, body: UpdateServicePayload) =>
+    apiFetch<Service>(`/api/v1/servicios/${id}`, {
+      method: "PATCH",
+      token,
+      body,
+    }),
   publish: (token: string, id: string, radio_metros?: number) =>
     apiFetch<PublishedService>(`/api/v1/servicios/${id}/publicar${buildQuery({ radio_metros })}`, {
       method: "POST",

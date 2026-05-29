@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Search, Filter, Eye, Radio, Receipt, Plus } from "lucide-react";
+import { Search, Filter, Eye, Radio, Receipt, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,9 @@ function ServiciosPage() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [selected, setSelected] = useState<Service | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<Service | null>(null);
+  const [editForm, setEditForm] = useState(() => crearFormularioServicio());
   const [createForm, setCreateForm] = useState(() => crearFormularioServicio());
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const serviceFilters = useMemo(
@@ -114,6 +117,23 @@ function ServiciosPage() {
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "No fue posible crear el servicio"),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (!editing) throw new Error("Servicio no seleccionado");
+      return servicesApi.update(token!, editing.id, construirPayloadServicio(editForm));
+    },
+    onSuccess: (service) => {
+      toast.success("Servicio actualizado");
+      setEditing(null);
+      setEditOpen(false);
+      setSelected((current) => (current?.id === service.id ? service : current));
+      queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible actualizar el servicio"),
   });
 
   const filtered = useMemo(() => {
@@ -275,9 +295,21 @@ function ServiciosPage() {
                       <StatusBadge status={service.estado as ServiceStatus} />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelected(service)}>
-                        <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setSelected(service)}>
+                          <Eye className="mr-1.5 h-3.5 w-3.5" /> Ver
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={!servicioEditable(service)}
+                          onClick={() =>
+                            abrirEdicion(service, setEditing, setEditForm, setEditOpen)
+                          }
+                        >
+                          <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -316,6 +348,13 @@ function ServiciosPage() {
                   <Info label="Dirección" value={selected.direccion ?? "—"} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={!servicioEditable(selected)}
+                    onClick={() => abrirEdicion(selected, setEditing, setEditForm, setEditOpen)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                  </Button>
                   <Button
                     disabled={publishMutation.isPending || selected.estado !== "CREADO"}
                     onClick={() => publishMutation.mutate(selected.id)}
@@ -424,6 +463,112 @@ function ServiciosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditing(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Editar servicio</DialogTitle>
+          </DialogHeader>
+          <ServicioFormFields
+            form={editForm}
+            setForm={setEditForm}
+            companies={companiesQuery.data ?? []}
+          />
+          <Button
+            className="w-full"
+            disabled={!formularioServicioValido(editForm) || updateMutation.isPending}
+            onClick={() => updateMutation.mutate()}
+          >
+            <Pencil className="mr-2 h-4 w-4" /> Guardar cambios
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ServicioFormFields({
+  form,
+  setForm,
+  companies,
+}: {
+  form: ServicioForm;
+  setForm: (form: ServicioForm) => void;
+  companies: Array<{ id: string; nombre: string }>;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>Empresa cliente</Label>
+        <Select
+          value={form.empresa_cliente_id}
+          onValueChange={(value) => setForm({ ...form, empresa_cliente_id: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecciona una empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            {companies.map((company) => (
+              <SelectItem key={company.id} value={company.id}>
+                {company.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Tipo de servicio</Label>
+        <Select
+          value={form.tipo_servicio}
+          onValueChange={(value) => setForm({ ...form, tipo_servicio: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">{serviceTypeLabel(1)}</SelectItem>
+            <SelectItem value="2">{serviceTypeLabel(2)}</SelectItem>
+            <SelectItem value="3">{serviceTypeLabel(3)}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Field
+        label="Placa vehículo"
+        value={form.placa_vehiculo}
+        onChange={(value) => setForm({ ...form, placa_vehiculo: value })}
+      />
+      <Field
+        label="Latitud"
+        type="number"
+        value={form.latitud}
+        onChange={(value) => setForm({ ...form, latitud: value })}
+      />
+      <Field
+        label="Longitud"
+        type="number"
+        value={form.longitud}
+        onChange={(value) => setForm({ ...form, longitud: value })}
+      />
+      <Field
+        label="Fecha programada"
+        type="datetime-local"
+        value={form.fecha_programada}
+        onChange={(value) => setForm({ ...form, fecha_programada: value })}
+      />
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label>Dirección</Label>
+        <Textarea
+          value={form.direccion}
+          onChange={(event) => setForm({ ...form, direccion: event.target.value })}
+          placeholder="Dirección o referencia"
+        />
+      </div>
     </div>
   );
 }
@@ -499,4 +644,31 @@ function construirPayloadServicio(form: ServicioForm): CreateServicePayload {
     direccion: form.direccion.trim() || null,
     fecha_programada: new Date(form.fecha_programada).toISOString(),
   };
+}
+
+function formularioDesdeServicio(service: Service): ServicioForm {
+  return {
+    empresa_cliente_id: service.empresa_cliente_id,
+    tipo_servicio: String(service.tipo_servicio),
+    placa_vehiculo: service.placa_vehiculo ?? "",
+    latitud: String(service.latitud),
+    longitud: String(service.longitud),
+    direccion: service.direccion ?? "",
+    fecha_programada: new Date(service.fecha_programada).toISOString().slice(0, 16),
+  };
+}
+
+function abrirEdicion(
+  service: Service,
+  setEditing: (service: Service) => void,
+  setEditForm: (form: ServicioForm) => void,
+  setEditOpen: (open: boolean) => void,
+) {
+  setEditing(service);
+  setEditForm(formularioDesdeServicio(service));
+  setEditOpen(true);
+}
+
+function servicioEditable(service: Service) {
+  return !["FINALIZADO", "VALIDADO", "PAGO_GENERADO", "CANCELADO"].includes(service.estado);
 }
