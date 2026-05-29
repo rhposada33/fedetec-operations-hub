@@ -67,6 +67,14 @@ export type CreateCompanyPayload = {
   password: string;
 };
 
+export type UpdateCompanyPayload = {
+  nombre?: string | null;
+  identificacion_tributaria?: string | null;
+  correo_contacto?: string | null;
+  telefono_contacto?: string | null;
+  esta_activa?: boolean;
+};
+
 export type CreateTechnicianPayload = {
   correo: string;
   contrasena: string;

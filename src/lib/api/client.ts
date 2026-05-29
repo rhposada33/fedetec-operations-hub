@@ -20,6 +20,7 @@ import type {
   TechnicianServiceNotification,
   TokenResponse,
   UpdateServicePayload,
+  UpdateCompanyPayload,
   UpdateTechnicianPayload,
 } from "./types";
 
@@ -135,7 +136,7 @@ export const adminApi = {
 export const companiesApi = {
   create: (token: string, body: CreateCompanyPayload) =>
     apiFetch<CompanyCreated>("/api/v1/empresas-cliente", { method: "POST", token, body }),
-  update: (token: string, id: string, body: Partial<Company>) =>
+  update: (token: string, id: string, body: UpdateCompanyPayload) =>
     apiFetch<Company>(`/api/v1/empresas-cliente/${id}`, {
       method: "PATCH",
       token,
