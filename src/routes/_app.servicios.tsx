@@ -34,9 +34,9 @@ import {
 } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
-import { adminApi, servicesApi } from "@/lib/api/client";
+import { ApiError, adminApi, servicesApi } from "@/lib/api/client";
 import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
-import type { CreateServicePayload, Service, ServiceStatus } from "@/lib/api/types";
+import type { CreateServicePayload, Service, ServiceFilters, ServiceStatus } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/servicios")({
@@ -91,13 +91,27 @@ function ServiciosPage() {
 
   const publishMutation = useMutation({
     mutationFn: (id: string) => servicesApi.publish(token!, id),
-    onSuccess: () => {
-      toast.success("Servicio publicado");
+    onSuccess: (published) => {
+      if (published.tecnicos_cercanos === 0 || published.notificaciones_creadas === 0) {
+        toast.warning(
+          "Servicio publicado, pero no se notificaron técnicos. Revisa disponibilidad y ubicación GPS del técnico demo.",
+        );
+      } else {
+        toast.success(
+          `Servicio publicado: ${published.notificaciones_creadas} técnico(s) notificado(s)`,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
     },
-    onError: (error) =>
-      toast.error(error instanceof Error ? error.message : "No fue posible publicar"),
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : "No fue posible publicar";
+      const detail =
+        error instanceof ApiError && typeof error.detail === "string" ? error.detail : message;
+      toast.error(
+        `${detail}. Si esperabas verlo en la app, revisa que el técnico este disponible y tenga ubicación cercana.`,
+      );
+    },
   });
 
   const paymentMutation = useMutation({
@@ -116,8 +130,14 @@ function ServiciosPage() {
       const payload = construirPayloadServicio(createForm);
       return servicesApi.create(token!, idempotencyKey, payload);
     },
-    onSuccess: () => {
+    onSuccess: (service) => {
       toast.success("Servicio creado");
+      if (servicioCoincideConFiltros(service, serviceFilters)) {
+        queryClient.setQueryData<Service[]>(
+          ["admin", "services", serviceFilters],
+          (current = []) => [service, ...current.filter((item) => item.id !== service.id)],
+        );
+      }
       setCreateForm(crearFormularioServicio(createForm.empresa_cliente_id));
       setIdempotencyKey(crypto.randomUUID());
       setCreateOpen(false);
@@ -1038,4 +1058,15 @@ function abrirEdicion(
 
 function servicioEditable(service: Service) {
   return !["FINALIZADO", "VALIDADO", "PAGO_GENERADO", "CANCELADO"].includes(service.estado);
+}
+
+function servicioCoincideConFiltros(service: Service, filters: ServiceFilters) {
+  if (filters.estado && service.estado !== filters.estado) return false;
+  if (filters.empresa_cliente_id && service.empresa_cliente_id !== filters.empresa_cliente_id) {
+    return false;
+  }
+  if (filters.tecnico_id && service.tecnico_aceptado_id !== filters.tecnico_id) return false;
+  if (filters.fecha_desde && service.fecha_programada < filters.fecha_desde) return false;
+  if (filters.fecha_hasta && service.fecha_programada > filters.fecha_hasta) return false;
+  return true;
 }
