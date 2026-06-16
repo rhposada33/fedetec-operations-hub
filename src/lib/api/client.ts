@@ -5,6 +5,7 @@ import type {
   CreateCompanyPayload,
   CreateServicePayload,
   CreateServiceRatingPayload,
+  CreateServiceTipPayload,
   CreateTechnicianPayload,
   CurrentUser,
   DashboardResponse,
@@ -15,6 +16,7 @@ import type {
   Service,
   ServiceFilters,
   ServiceType,
+  ServiceTip,
   ServiceRating,
   Technician,
   TechnicianPerformanceMetrics,
@@ -225,6 +227,14 @@ export const servicesApi = {
       token,
       body,
     }),
+  tip: (token: string, id: string) =>
+    apiFetch<ServiceTip>(`/api/v1/servicios/${id}/propina`, { token }),
+  createTip: (token: string, id: string, body: CreateServiceTipPayload) =>
+    apiFetch<ServiceTip>(`/api/v1/servicios/${id}/propina`, {
+      method: "POST",
+      token,
+      body,
+    }),
 };
 
 export const evidenceApi = {
@@ -277,4 +287,7 @@ export const companyPortalApi = {
   rating: (token: string, id: string) => servicesApi.rating(token, id),
   createRating: (token: string, id: string, body: CreateServiceRatingPayload) =>
     servicesApi.createRating(token, id, body),
+  tip: (token: string, id: string) => servicesApi.tip(token, id),
+  createTip: (token: string, id: string, body: CreateServiceTipPayload) =>
+    servicesApi.createTip(token, id, body),
 };

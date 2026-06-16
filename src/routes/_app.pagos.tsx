@@ -103,7 +103,9 @@ function PagosPage() {
                   <th className="px-4 py-3 font-medium">Empresa</th>
                   <th className="px-4 py-3 font-medium">Generado</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium text-right">Monto</th>
+                  <th className="px-4 py-3 font-medium text-right">Base</th>
+                  <th className="px-4 py-3 font-medium text-right">Propina</th>
+                  <th className="px-4 py-3 font-medium text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,6 +131,12 @@ function PagosPage() {
                       >
                         {report.estado}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      {formatCurrency(report.valor_base)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-success">
+                      {formatCurrency(report.valor_propina)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {formatCurrency(report.valor)}

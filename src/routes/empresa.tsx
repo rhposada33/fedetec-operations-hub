@@ -1,7 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { BarChart3, Building2, CheckCircle2, LogOut, Plus, RefreshCcw, Star } from "lucide-react";
+import {
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  Gift,
+  LogOut,
+  Plus,
+  RefreshCcw,
+  Star,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,8 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { ApiError, companyPortalApi } from "@/lib/api/client";
-import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
-import type { CreateServicePayload, Service, ServiceRating } from "@/lib/api/types";
+import { formatCurrency, formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
+import type { CreateServicePayload, Service, ServiceRating, ServiceTip } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/empresa")({
@@ -173,13 +182,17 @@ function EmpresaPortal() {
                         <th>Fecha</th>
                         <th>Estado</th>
                         <th>Calificación</th>
+                        <th>Propina</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(services.data ?? []).map((service) => (
                         <tr key={service.id} className="border-t border-border">
                           <td className="py-3 font-mono text-xs">{service.id.slice(0, 8)}</td>
-                          <td>{serviceTypeLabel(service.tipo_servicio)}</td>
+                          <td>
+                            {service.tipo_servicio_nombre ||
+                              serviceTypeLabel(service.tipo_servicio)}
+                          </td>
                           <td>{service.placa_vehiculo ?? "—"}</td>
                           <td>{formatDate(service.fecha_programada)}</td>
                           <td>
@@ -187,6 +200,9 @@ function EmpresaPortal() {
                           </td>
                           <td className="min-w-[260px] py-3">
                             <RatingCell token={token} service={service} />
+                          </td>
+                          <td className="min-w-[220px] py-3">
+                            <TipCell token={token} service={service} />
                           </td>
                         </tr>
                       ))}
@@ -436,6 +452,78 @@ function RatingCell({ token, service }: { token: string; service: Service }) {
         placeholder="Comentario opcional"
         className="h-8 text-xs"
       />
+    </div>
+  );
+}
+
+function TipCell({ token, service }: { token: string; service: Service }) {
+  const queryClient = useQueryClient();
+  const [valor, setValor] = useState("");
+
+  const tip = useQuery<ServiceTip | null>({
+    queryKey: ["company", "service-tip", service.id],
+    queryFn: async () => {
+      try {
+        return await companyPortalApi.tip(token, service.id);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
+    enabled: ESTADOS_CALIFICABLES.has(service.estado),
+    retry: false,
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => companyPortalApi.createTip(token, service.id, { valor: Number(valor) }),
+    onSuccess: () => {
+      toast.success("Propina registrada");
+      queryClient.invalidateQueries({ queryKey: ["company", "service-tip", service.id] });
+      setValor("");
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible registrar la propina"),
+  });
+
+  const amount = Number(valor);
+  const validAmount = Number.isFinite(amount) && amount >= 0 && valor.trim().length > 0;
+
+  if (!ESTADOS_CALIFICABLES.has(service.estado)) {
+    return <span className="text-xs text-muted-foreground">Disponible al finalizar</span>;
+  }
+
+  if (tip.isLoading) {
+    return <span className="text-xs text-muted-foreground">Consultando...</span>;
+  }
+
+  if (tip.data) {
+    return (
+      <div className="flex items-center gap-1 text-xs font-medium text-success">
+        <Gift className="h-3.5 w-3.5" />
+        {formatCurrency(tip.data.valor)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        value={valor}
+        onChange={(event) => setValor(event.target.value)}
+        type="number"
+        min="0"
+        step="1"
+        placeholder="COP"
+        className="h-8 w-24 text-xs"
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={!validAmount || mutation.isPending}
+        onClick={() => mutation.mutate()}
+      >
+        <Gift className="mr-1.5 h-3.5 w-3.5" /> Dar
+      </Button>
     </div>
   );
 }

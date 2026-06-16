@@ -198,6 +198,8 @@ export type PaymentReport = {
   tecnico_id: string;
   empresa_cliente_id: string;
   valor: string | number | null;
+  valor_base: string | number;
+  valor_propina: string | number;
   estado: PaymentStatus;
   fecha_generacion: string;
 };
@@ -246,6 +248,19 @@ export type ServiceRating = {
 export type CreateServiceRatingPayload = {
   puntuacion: number;
   comentario?: string | null;
+};
+
+export type ServiceTip = {
+  id: string;
+  servicio_id: string;
+  empresa_cliente_id: string;
+  tecnico_id: string;
+  valor: string | number;
+  fecha_creacion: string;
+};
+
+export type CreateServiceTipPayload = {
+  valor: number;
 };
 
 export type ServiceType = {
