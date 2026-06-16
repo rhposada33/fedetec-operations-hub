@@ -14,13 +14,16 @@ import type {
   PublishedService,
   Service,
   ServiceFilters,
+  ServiceType,
   ServiceRating,
   Technician,
   TechnicianPerformanceMetrics,
   TechnicianServiceNotification,
   TokenResponse,
   UpdateServicePayload,
+  CreateServiceTypePayload,
   UpdateCompanyPayload,
+  UpdateServiceTypePayload,
   UpdateTechnicianPayload,
 } from "./types";
 
@@ -130,6 +133,27 @@ export const adminApi = {
       method: "PATCH",
       token,
       body: { aprobacion_evidencias: config },
+    }),
+  serviceTypes: (token: string, solo_activos = false) =>
+    apiFetch<ServiceType[]>(`/api/v1/admin/tipos-servicio${buildQuery({ solo_activos })}`, {
+      token,
+    }),
+  createServiceType: (token: string, body: CreateServiceTypePayload) =>
+    apiFetch<ServiceType>("/api/v1/admin/tipos-servicio", {
+      method: "POST",
+      token,
+      body,
+    }),
+  updateServiceType: (token: string, id: number, body: UpdateServiceTypePayload) =>
+    apiFetch<ServiceType>(`/api/v1/admin/tipos-servicio/${id}`, {
+      method: "PATCH",
+      token,
+      body,
+    }),
+  deactivateServiceType: (token: string, id: number) =>
+    apiFetch<ServiceType>(`/api/v1/admin/tipos-servicio/${id}`, {
+      method: "DELETE",
+      token,
     }),
 };
 

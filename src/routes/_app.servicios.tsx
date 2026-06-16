@@ -35,8 +35,14 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { ApiError, adminApi, servicesApi } from "@/lib/api/client";
-import { formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
-import type { CreateServicePayload, Service, ServiceFilters, ServiceStatus } from "@/lib/api/types";
+import { formatCurrency, formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
+import type {
+  CreateServicePayload,
+  Service,
+  ServiceFilters,
+  ServiceStatus,
+  ServiceType,
+} from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/servicios")({
@@ -89,6 +95,12 @@ function ServiciosPage() {
     enabled: Boolean(token),
   });
 
+  const serviceTypesQuery = useQuery({
+    queryKey: ["admin", "service-types", "active"],
+    queryFn: () => adminApi.serviceTypes(token!, true),
+    enabled: Boolean(token),
+  });
+
   const publishMutation = useMutation({
     mutationFn: (id: string) => servicesApi.publish(token!, id),
     onSuccess: (published) => {
@@ -138,7 +150,9 @@ function ServiciosPage() {
           (current = []) => [service, ...current.filter((item) => item.id !== service.id)],
         );
       }
-      setCreateForm(crearFormularioServicio(createForm.empresa_cliente_id));
+      setCreateForm(
+        crearFormularioServicio(createForm.empresa_cliente_id, serviceTypesQuery.data?.[0]?.id),
+      );
       setIdempotencyKey(crypto.randomUUID());
       setCreateOpen(false);
       queryClient.invalidateQueries({ queryKey: ["admin", "services"] });
@@ -189,7 +203,17 @@ function ServiciosPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Servicios</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} servicios encontrados</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button
+          onClick={() => {
+            setCreateForm(
+              crearFormularioServicio(
+                createForm.empresa_cliente_id,
+                serviceTypesQuery.data?.[0]?.id,
+              ),
+            );
+            setCreateOpen(true);
+          }}
+        >
           <Plus className="mr-2 h-4 w-4" /> Nuevo servicio
         </Button>
       </div>
@@ -293,6 +317,7 @@ function ServiciosPage() {
                   <th className="px-4 py-3 font-medium">ID</th>
                   <th className="px-4 py-3 font-medium">Empresa</th>
                   <th className="px-4 py-3 font-medium">Tipo</th>
+                  <th className="px-4 py-3 font-medium">Valor</th>
                   <th className="px-4 py-3 font-medium">Placa</th>
                   <th className="px-4 py-3 font-medium">Técnico</th>
                   <th className="px-4 py-3 font-medium">Programado</th>
@@ -311,7 +336,10 @@ function ServiciosPage() {
                       {service.empresa_cliente_id.slice(0, 8)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {serviceTypeLabel(service.tipo_servicio)}
+                      {tipoServicioNombre(service)}
+                    </td>
+                    <td className="px-4 py-3 font-semibold">
+                      {formatCurrency(service.valor_servicio)}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">{service.placa_vehiculo ?? "—"}</td>
                     <td className="px-4 py-3 font-mono text-xs">
@@ -345,7 +373,7 @@ function ServiciosPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-12 text-center text-sm text-muted-foreground"
                     >
                       No hay servicios para los filtros aplicados.
@@ -364,7 +392,9 @@ function ServiciosPage() {
             <>
               <SheetHeader>
                 <SheetTitle className="font-mono">{selected.id}</SheetTitle>
-                <SheetDescription>{serviceTypeLabel(selected.tipo_servicio)}</SheetDescription>
+                <SheetDescription>
+                  {tipoServicioNombre(selected)} · {formatCurrency(selected.valor_servicio)}
+                </SheetDescription>
               </SheetHeader>
               <div className="mt-6 space-y-4">
                 <StatusBadge status={selected.estado} />
@@ -372,6 +402,7 @@ function ServiciosPage() {
                   <Info label="Empresa" value={selected.empresa_cliente_id} />
                   <Info label="Técnico" value={selected.tecnico_aceptado_id ?? "—"} />
                   <Info label="Placa" value={selected.placa_vehiculo ?? "—"} />
+                  <Info label="Valor" value={formatCurrency(selected.valor_servicio)} />
                   <Info label="Programado" value={formatDate(selected.fecha_programada)} />
                   <Info label="Ubicación" value={`${selected.latitud}, ${selected.longitud}`} />
                   <Info label="Dirección" value={selected.direccion ?? "—"} />
@@ -417,6 +448,7 @@ function ServiciosPage() {
               form={createForm}
               setForm={setCreateForm}
               companies={companiesQuery.data ?? []}
+              serviceTypes={serviceTypesQuery.data ?? []}
             />
             <Button
               className="w-full"
@@ -444,6 +476,7 @@ function ServiciosPage() {
             form={editForm}
             setForm={setEditForm}
             companies={companiesQuery.data ?? []}
+            serviceTypes={serviceTypesQuery.data ?? []}
           />
           <Button
             className="w-full"
@@ -462,10 +495,12 @@ function ServicioFormFields({
   form,
   setForm,
   companies,
+  serviceTypes,
 }: {
   form: ServicioForm;
   setForm: (form: ServicioForm) => void;
   companies: Array<{ id: string; nombre: string }>;
+  serviceTypes: ServiceType[];
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -497,9 +532,11 @@ function ServicioFormFields({
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">{serviceTypeLabel(1)}</SelectItem>
-            <SelectItem value="2">{serviceTypeLabel(2)}</SelectItem>
-            <SelectItem value="3">{serviceTypeLabel(3)}</SelectItem>
+            {serviceTypes.map((type) => (
+              <SelectItem key={type.id} value={String(type.id)}>
+                {type.nombre} · {formatCurrency(type.valor)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -993,12 +1030,12 @@ const DEFAULT_PICKER_LOCATION: PickedLocation = {
   direccion: "Bogotá, Colombia",
 };
 
-function crearFormularioServicio(empresaClienteId = ""): ServicioForm {
+function crearFormularioServicio(empresaClienteId = "", tipoServicioId?: number): ServicioForm {
   const fecha = new Date(Date.now() + 60 * 60 * 1000);
   fecha.setSeconds(0, 0);
   return {
     empresa_cliente_id: empresaClienteId,
-    tipo_servicio: "1",
+    tipo_servicio: tipoServicioId ? String(tipoServicioId) : "",
     placa_vehiculo: "",
     latitud: "",
     longitud: "",
@@ -1010,6 +1047,7 @@ function crearFormularioServicio(empresaClienteId = ""): ServicioForm {
 function formularioServicioValido(form: ServicioForm) {
   return (
     form.empresa_cliente_id.trim().length > 0 &&
+    form.tipo_servicio.trim().length > 0 &&
     coordenadaValida(form.latitud) &&
     coordenadaValida(form.longitud) &&
     form.direccion.trim().length > 0 &&
@@ -1024,7 +1062,7 @@ function coordenadaValida(value: string) {
 function construirPayloadServicio(form: ServicioForm): CreateServicePayload {
   return {
     empresa_cliente_id: form.empresa_cliente_id,
-    tipo_servicio: Number(form.tipo_servicio) as 1 | 2 | 3,
+    tipo_servicio: Number(form.tipo_servicio),
     placa_vehiculo: form.placa_vehiculo.trim() || null,
     latitud: Number(form.latitud),
     longitud: Number(form.longitud),
@@ -1058,6 +1096,10 @@ function abrirEdicion(
 
 function servicioEditable(service: Service) {
   return !["FINALIZADO", "VALIDADO", "PAGO_GENERADO", "CANCELADO"].includes(service.estado);
+}
+
+function tipoServicioNombre(service: Service) {
+  return service.tipo_servicio_nombre || serviceTypeLabel(service.tipo_servicio);
 }
 
 function servicioCoincideConFiltros(service: Service, filters: ServiceFilters) {

@@ -146,6 +146,8 @@ export type Service = {
   id: string;
   empresa_cliente_id: string;
   tipo_servicio: number;
+  tipo_servicio_nombre: string;
+  valor_servicio: string | number;
   placa_vehiculo: string | null;
   latitud: number;
   longitud: number;
@@ -220,7 +222,7 @@ export type ServiceFilters = {
 
 export type CreateServicePayload = {
   empresa_cliente_id?: string | null;
-  tipo_servicio: 1 | 2 | 3;
+  tipo_servicio: number;
   placa_vehiculo?: string | null;
   latitud: number;
   longitud: number;
@@ -245,3 +247,20 @@ export type CreateServiceRatingPayload = {
   puntuacion: number;
   comentario?: string | null;
 };
+
+export type ServiceType = {
+  id: number;
+  nombre: string;
+  valor: string | number;
+  esta_activo: boolean;
+  fecha_creacion: string;
+  fecha_actualizacion: string;
+};
+
+export type CreateServiceTypePayload = {
+  nombre: string;
+  valor: number;
+  esta_activo?: boolean;
+};
+
+export type UpdateServiceTypePayload = Partial<CreateServiceTypePayload>;
