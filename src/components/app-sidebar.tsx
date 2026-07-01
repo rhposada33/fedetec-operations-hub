@@ -55,16 +55,6 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
           })}
         </ul>
       </nav>
-
-      <div className="m-3 rounded-xl border border-sidebar-border bg-gradient-to-br from-primary/10 to-primary/5 p-4">
-        <div className="text-xs font-semibold">Soporte 24/7</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Operación monitoreada en tiempo real. Tiempo medio de respuesta: 47s.
-        </p>
-        <button className="mt-3 w-full rounded-md bg-primary px-2 py-1.5 text-[11px] font-semibold text-primary-foreground transition hover:bg-primary/90">
-          Contactar mesa de ayuda
-        </button>
-      </div>
     </aside>
   );
 }
