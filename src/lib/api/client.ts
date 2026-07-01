@@ -290,4 +290,11 @@ export const companyPortalApi = {
   tip: (token: string, id: string) => servicesApi.tip(token, id),
   createTip: (token: string, id: string, body: CreateServiceTipPayload) =>
     servicesApi.createTip(token, id, body),
+  evidences: (token: string, estado?: string) =>
+    apiFetch<Evidence[]>(`/api/v1/evidencias${buildQuery({ estado })}`, { token }),
+  approveEvidence: (token: string, id: string) => evidenceApi.approve(token, id),
+  rejectEvidence: (token: string, id: string) => evidenceApi.reject(token, id),
+  payments: (token: string) => paymentsApi.list(token),
+  generatePayment: (token: string, serviceId: string) =>
+    servicesApi.paymentReport(token, serviceId),
 };

@@ -1,29 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  Wrench,
   Users,
-  Building2,
-  ImageIcon,
-  Receipt,
-  Map,
   Settings,
-  Bell,
-  BarChart3,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Servicios", url: "/servicios", icon: Wrench },
   { title: "Técnicos", url: "/tecnicos", icon: Users },
-  { title: "Empresas", url: "/empresas", icon: Building2 },
-  { title: "Evidencias", url: "/evidencias", icon: ImageIcon },
-  { title: "Pagos", url: "/pagos", icon: Receipt },
-  { title: "Mapa operativo", url: "/mapa", icon: Map },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Notificaciones", url: "/notificaciones", icon: Bell },
   { title: "Configuración", url: "/configuracion", icon: Settings },
 ];
 
@@ -68,11 +54,6 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     )}
                   />
                   <span>{item.title}</span>
-                  {item.title === "Notificaciones" && (
-                    <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                      3
-                    </span>
-                  )}
                 </Link>
               </li>
             );
