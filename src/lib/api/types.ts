@@ -179,6 +179,15 @@ export type PublishedService = Service & {
   tecnicos_cercanos: number;
 };
 
+export type NotificationDeliverySummary = {
+  servicio_id: string;
+  total: number;
+  recibidas: number;
+  enviadas_proveedor: number;
+  pendientes: number;
+  fallidas: number;
+};
+
 export type Evidence = {
   id: string;
   servicio_id: string;

@@ -209,6 +209,7 @@ function EmpresaPortal() {
                         <th>Placa</th>
                         <th>Fecha</th>
                         <th>Estado</th>
+                        <th>Notificaciones</th>
                         <th>Calificación</th>
                         <th>Propina</th>
                       </tr>
@@ -225,6 +226,9 @@ function EmpresaPortal() {
                           <td>{formatDate(service.fecha_programada)}</td>
                           <td>
                             <StatusBadge status={service.estado} />
+                          </td>
+                          <td className="min-w-[180px] py-3">
+                            <NotificationDeliveryCell token={token} serviceId={service.id} />
                           </td>
                           <td className="min-w-[260px] py-3">
                             <RatingCell token={token} service={service} />
@@ -248,6 +252,28 @@ function EmpresaPortal() {
 
 const ESTADOS_CALIFICABLES = new Set(["FINALIZADO", "VALIDADO", "PAGO_GENERADO"]);
 const ESTADOS_PAGO = new Set(["FINALIZADO", "VALIDADO"]);
+
+function NotificationDeliveryCell({ token, serviceId }: { token: string; serviceId: string }) {
+  const summary = useQuery({
+    queryKey: ["company", "notification-summary", serviceId],
+    queryFn: () => companyPortalApi.notificationSummary(token, serviceId),
+  });
+  if (summary.isLoading) return <span className="text-xs text-muted-foreground">Consultando…</span>;
+  if (!summary.data || summary.data.total === 0) {
+    return <span className="text-xs text-muted-foreground">Sin envíos</span>;
+  }
+  return (
+    <div className="space-y-1 text-xs">
+      <div className="font-medium text-success">
+        {summary.data.recibidas}/{summary.data.total} recibidas
+      </div>
+      <div className="text-muted-foreground">
+        {summary.data.enviadas_proveedor + summary.data.pendientes} pendientes ·{" "}
+        {summary.data.fallidas} fallidas
+      </div>
+    </div>
+  );
+}
 
 function CompanyEvidencePanel({ token }: { token: string }) {
   const queryClient = useQueryClient();
@@ -457,6 +483,23 @@ function useCompanyReport(token: string | null, services: Service[], enabled: bo
       retry: false,
     })),
   });
+  const notificationQueries = useQueries({
+    queries: services.map((service) => ({
+      queryKey: ["company", "notification-summary", service.id],
+      queryFn: () => companyPortalApi.notificationSummary(token!, service.id),
+      enabled,
+    })),
+  });
+  const notificationTotals = notificationQueries.reduce(
+    (totals, query) => ({
+      total: totals.total + (query.data?.total ?? 0),
+      received: totals.received + (query.data?.recibidas ?? 0),
+      failed: totals.failed + (query.data?.fallidas ?? 0),
+      pending:
+        totals.pending + (query.data?.pendientes ?? 0) + (query.data?.enviadas_proveedor ?? 0),
+    }),
+    { total: 0, received: 0, failed: 0, pending: 0 },
+  );
 
   const ratings = ratingQueries
     .map((query) => query.data)
@@ -497,6 +540,7 @@ function useCompanyReport(token: string | null, services: Service[], enabled: bo
     paymentRate: percentage(paid, completed),
     ratingCoverage: percentage(ratings.length, eligibleServices.length),
     byStatus,
+    notificationTotals,
     isLoadingRatings: ratingQueries.some((query) => query.isLoading),
   };
 }
@@ -515,6 +559,11 @@ function CompanyReport({ report }: { report: ReturnType<typeof useCompanyReport>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Metric
+            label="Notificaciones recibidas"
+            value={`${report.notificationTotals.received}/${report.notificationTotals.total}`}
+            hint={`${report.notificationTotals.pending} pendientes · ${report.notificationTotals.failed} fallidas`}
+          />
           <Metric
             label="Servicios"
             value={String(report.total)}

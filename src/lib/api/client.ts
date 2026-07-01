@@ -13,6 +13,7 @@ import type {
   NearbyTechnician,
   PaymentReport,
   PublishedService,
+  NotificationDeliverySummary,
   Service,
   ServiceFilters,
   ServiceType,
@@ -297,4 +298,8 @@ export const companyPortalApi = {
   payments: (token: string) => paymentsApi.list(token),
   generatePayment: (token: string, serviceId: string) =>
     servicesApi.paymentReport(token, serviceId),
+  notificationSummary: (token: string, serviceId: string) =>
+    apiFetch<NotificationDeliverySummary>(`/api/v1/servicios/${serviceId}/notificaciones/resumen`, {
+      token,
+    }),
 };
