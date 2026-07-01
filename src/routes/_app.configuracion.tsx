@@ -68,121 +68,121 @@ function ConfigPage() {
         <p className="text-sm text-muted-foreground">Administra el catálogo de servicios.</p>
       </div>
       <div className="mt-4">
-          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tipos de servicio</CardTitle>
-                <CardDescription>
-                  Valores visibles para técnicos y usados como base de pago.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/40">
-                      <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="px-4 py-3 font-medium">Nombre</th>
-                        <th className="px-4 py-3 font-medium">Valor</th>
-                        <th className="px-4 py-3 font-medium">Estado</th>
-                        <th className="px-4 py-3 font-medium text-right">Acciones</th>
+        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipos de servicio</CardTitle>
+              <CardDescription>
+                Valores visibles para técnicos y usados como base de pago.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40">
+                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="px-4 py-3 font-medium">Nombre</th>
+                      <th className="px-4 py-3 font-medium">Valor</th>
+                      <th className="px-4 py-3 font-medium">Estado</th>
+                      <th className="px-4 py-3 font-medium text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(serviceTypesQuery.data ?? []).map((type) => (
+                      <tr key={type.id} className="border-t border-border">
+                        <td className="px-4 py-3 font-medium">{type.nombre}</td>
+                        <td className="px-4 py-3">{formatCurrency(type.valor)}</td>
+                        <td className="px-4 py-3">{type.esta_activo ? "Activo" : "Inactivo"}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingType(type);
+                              setTypeForm({
+                                nombre: type.nombre,
+                                valor: String(Number(type.valor)),
+                                esta_activo: type.esta_activo,
+                              });
+                            }}
+                          >
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={!type.esta_activo || deactivateTypeMutation.isPending}
+                            onClick={() => deactivateTypeMutation.mutate(type.id)}
+                          >
+                            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Desactivar
+                          </Button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {(serviceTypesQuery.data ?? []).map((type) => (
-                        <tr key={type.id} className="border-t border-border">
-                          <td className="px-4 py-3 font-medium">{type.nombre}</td>
-                          <td className="px-4 py-3">{formatCurrency(type.valor)}</td>
-                          <td className="px-4 py-3">{type.esta_activo ? "Activo" : "Inactivo"}</td>
-                          <td className="px-4 py-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingType(type);
-                                setTypeForm({
-                                  nombre: type.nombre,
-                                  valor: String(Number(type.valor)),
-                                  esta_activo: type.esta_activo,
-                                });
-                              }}
-                            >
-                              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={!type.esta_activo || deactivateTypeMutation.isPending}
-                              onClick={() => deactivateTypeMutation.mutate(type.id)}
-                            >
-                              <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Desactivar
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                      {(serviceTypesQuery.data ?? []).length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
-                            No hay tipos de servicio configurados.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                    {(serviceTypesQuery.data ?? []).length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                          No hay tipos de servicio configurados.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{editingType ? "Editar tipo" : "Nuevo tipo"}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Nombre</Label>
-                  <Input
-                    value={typeForm.nombre}
-                    onChange={(event) => setTypeForm({ ...typeForm, nombre: event.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Valor COP</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={typeForm.valor}
-                    onChange={(event) => setTypeForm({ ...typeForm, valor: event.target.value })}
-                  />
-                </div>
-                <Row label="Activo" desc="">
-                  <Switch
-                    checked={typeForm.esta_activo}
-                    onCheckedChange={(value) => setTypeForm({ ...typeForm, esta_activo: value })}
-                  />
-                </Row>
-                <div className="flex gap-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>{editingType ? "Editar tipo" : "Nuevo tipo"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Nombre</Label>
+                <Input
+                  value={typeForm.nombre}
+                  onChange={(event) => setTypeForm({ ...typeForm, nombre: event.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Valor COP</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={typeForm.valor}
+                  onChange={(event) => setTypeForm({ ...typeForm, valor: event.target.value })}
+                />
+              </div>
+              <Row label="Activo" desc="">
+                <Switch
+                  checked={typeForm.esta_activo}
+                  onCheckedChange={(value) => setTypeForm({ ...typeForm, esta_activo: value })}
+                />
+              </Row>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={!tipoFormValido(typeForm) || saveTypeMutation.isPending}
+                  onClick={() => saveTypeMutation.mutate()}
+                >
+                  <Plus className="mr-2 h-4 w-4" /> {editingType ? "Guardar" : "Crear"}
+                </Button>
+                {editingType && (
                   <Button
-                    className="flex-1"
-                    disabled={!tipoFormValido(typeForm) || saveTypeMutation.isPending}
-                    onClick={() => saveTypeMutation.mutate()}
+                    variant="outline"
+                    onClick={() => {
+                      setEditingType(null);
+                      setTypeForm(emptyTypeForm());
+                    }}
                   >
-                    <Plus className="mr-2 h-4 w-4" /> {editingType ? "Guardar" : "Crear"}
+                    Cancelar
                   </Button>
-                  {editingType && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEditingType(null);
-                        setTypeForm(emptyTypeForm());
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

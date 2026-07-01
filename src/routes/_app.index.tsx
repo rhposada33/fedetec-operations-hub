@@ -43,7 +43,9 @@ function TechnicianDashboard() {
           </h1>
           <p className="text-sm text-muted-foreground">Resumen del equipo técnico.</p>
         </div>
-        <Button asChild><Link to="/tecnicos">Gestionar técnicos</Link></Button>
+        <Button asChild>
+          <Link to="/tecnicos">Gestionar técnicos</Link>
+        </Button>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {metrics.map((metric) => (
@@ -62,8 +64,12 @@ function TechnicianDashboard() {
           <CardDescription>Estado actual sin información de empresas o servicios.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-4xl font-semibold">{records.length ? Math.round((available / records.length) * 100) : 0}%</div>
-          <p className="mt-1 text-sm text-muted-foreground">{available} de {records.length} técnicos disponibles.</p>
+          <div className="text-4xl font-semibold">
+            {records.length ? Math.round((available / records.length) * 100) : 0}%
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {available} de {records.length} técnicos disponibles.
+          </p>
         </CardContent>
       </Card>
     </div>

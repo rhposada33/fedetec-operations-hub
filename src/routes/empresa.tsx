@@ -23,7 +23,14 @@ import { StatusBadge } from "@/components/status-badge";
 import { ErrorState, LoadingState } from "@/components/async-state";
 import { ApiError, companyPortalApi } from "@/lib/api/client";
 import { formatCurrency, formatDate, serviceTypeLabel, statusVariant } from "@/lib/api/format";
-import type { CreateServicePayload, Evidence, PaymentReport, Service, ServiceRating, ServiceTip } from "@/lib/api/types";
+import type {
+  CreateServicePayload,
+  Evidence,
+  PaymentReport,
+  Service,
+  ServiceRating,
+  ServiceTip,
+} from "@/lib/api/types";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/empresa")({
@@ -116,11 +123,15 @@ function EmpresaPortal() {
             ["Evidencias", "#evidencias"],
             ["Pagos", "#pagos"],
           ].map(([label, href]) => (
-            <Button key={href} asChild variant="ghost" size="sm"><a href={href}>{label}</a></Button>
+            <Button key={href} asChild variant="ghost" size="sm">
+              <a href={href}>{label}</a>
+            </Button>
           ))}
         </nav>
 
-        <div id="inicio"><CompanyReport report={report} /></div>
+        <div id="inicio">
+          <CompanyReport report={report} />
+        </div>
 
         <CompanyEvidencePanel token={token} />
 
@@ -254,7 +265,8 @@ function CompanyEvidencePanel({ token }: { token: string }) {
       toast.success("Evidencia actualizada");
       queryClient.invalidateQueries({ queryKey: ["company", "evidences"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "No fue posible revisar la evidencia"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible revisar la evidencia"),
   });
 
   const submit = (evidence: Evidence, action: "approve" | "reject") => {
@@ -267,20 +279,70 @@ function CompanyEvidencePanel({ token }: { token: string }) {
   return (
     <Card id="evidencias" className="scroll-mt-4">
       <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <div><CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" /> Evidencias</CardTitle><CardDescription>Evidencias de los servicios de tu empresa.</CardDescription></div>
-        <select className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value)}>
-          <option value="">Todos los estados</option><option value="PENDIENTE">Pendientes</option><option value="APROBADA">Aprobadas</option><option value="RECHAZADA">Rechazadas</option>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5" /> Evidencias
+          </CardTitle>
+          <CardDescription>Evidencias de los servicios de tu empresa.</CardDescription>
+        </div>
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="">Todos los estados</option>
+          <option value="PENDIENTE">Pendientes</option>
+          <option value="APROBADA">Aprobadas</option>
+          <option value="RECHAZADA">Rechazadas</option>
         </select>
       </CardHeader>
       <CardContent>
-        {evidences.isLoading ? <LoadingState label="Cargando evidencias..." /> : evidences.isError ? <ErrorState error={evidences.error} onRetry={() => evidences.refetch()} /> : (evidences.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">No hay evidencias para este filtro.</p> : (
+        {evidences.isLoading ? (
+          <LoadingState label="Cargando evidencias..." />
+        ) : evidences.isError ? (
+          <ErrorState error={evidences.error} onRetry={() => evidences.refetch()} />
+        ) : (evidences.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay evidencias para este filtro.</p>
+        ) : (
           <div className="grid gap-3 md:grid-cols-2">
-            {(evidences.data ?? []).map((evidence) => <div key={evidence.id} className="rounded-lg border p-4">
-              <div className="flex items-center justify-between gap-2"><span className="font-mono text-xs">Servicio {evidence.servicio_id.slice(0, 8)}</span><StatusBadge status={evidence.estado_aprobacion} /></div>
-              <p className="my-2 text-sm">{evidence.descripcion || "Sin descripción"}</p>
-              <a className="text-xs text-primary underline" href={evidence.url_archivo} target="_blank" rel="noreferrer">Ver archivo</a>
-              {evidence.estado_aprobacion === "PENDIENTE" && <div className="mt-3 flex gap-2"><Button size="sm" disabled={review.isPending} onClick={() => submit(evidence, "approve")}>Aprobar</Button><Button size="sm" variant="destructive" disabled={review.isPending} onClick={() => submit(evidence, "reject")}>Rechazar</Button></div>}
-            </div>)}
+            {(evidences.data ?? []).map((evidence) => (
+              <div key={evidence.id} className="rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs">
+                    Servicio {evidence.servicio_id.slice(0, 8)}
+                  </span>
+                  <StatusBadge status={evidence.estado_aprobacion} />
+                </div>
+                <p className="my-2 text-sm">{evidence.descripcion || "Sin descripción"}</p>
+                <a
+                  className="text-xs text-primary underline"
+                  href={evidence.url_archivo}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver archivo
+                </a>
+                {evidence.estado_aprobacion === "PENDIENTE" && (
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={review.isPending}
+                      onClick={() => submit(evidence, "approve")}
+                    >
+                      Aprobar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={review.isPending}
+                      onClick={() => submit(evidence, "reject")}
+                    >
+                      Rechazar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </CardContent>
@@ -290,7 +352,10 @@ function CompanyEvidencePanel({ token }: { token: string }) {
 
 function CompanyPaymentsPanel({ token, services }: { token: string; services: Service[] }) {
   const queryClient = useQueryClient();
-  const payments = useQuery({ queryKey: ["company", "payments"], queryFn: () => companyPortalApi.payments(token) });
+  const payments = useQuery({
+    queryKey: ["company", "payments"],
+    queryFn: () => companyPortalApi.payments(token),
+  });
   const generate = useMutation({
     mutationFn: (serviceId: string) => companyPortalApi.generatePayment(token, serviceId),
     onSuccess: () => {
@@ -298,15 +363,81 @@ function CompanyPaymentsPanel({ token, services }: { token: string; services: Se
       queryClient.invalidateQueries({ queryKey: ["company", "payments"] });
       queryClient.invalidateQueries({ queryKey: ["company", "services"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "No fue posible generar el pago"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "No fue posible generar el pago"),
   });
   const reports = payments.data ?? [];
   const reported = new Set(reports.map((item: PaymentReport) => item.servicio_id));
-  const eligible = services.filter((item) => ESTADOS_PAGO.has(item.estado) && !reported.has(item.id));
-  return <Card id="pagos" className="scroll-mt-4"><CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> Pagos</CardTitle><CardDescription>Reportes de pago asociados a tus servicios.</CardDescription></CardHeader><CardContent className="space-y-4">
-    {eligible.length > 0 && <div><div className="mb-2 text-sm font-medium">Servicios listos para generar pago</div><div className="flex flex-wrap gap-2">{eligible.map((service) => <Button key={service.id} size="sm" variant="outline" disabled={generate.isPending} onClick={() => window.confirm("¿Generar el reporte de pago de este servicio?") && generate.mutate(service.id)}>Generar {service.id.slice(0, 8)}</Button>)}</div></div>}
-    {payments.isLoading ? <LoadingState label="Cargando pagos..." /> : payments.isError ? <ErrorState error={payments.error} onRetry={() => payments.refetch()} /> : reports.length === 0 ? <p className="text-sm text-muted-foreground">Aún no hay reportes de pago.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Servicio</th><th>Valor base</th><th>Propina</th><th>Total</th><th>Estado</th></tr></thead><tbody>{reports.map((report: PaymentReport) => <tr key={report.id} className="border-t"><td className="py-3 font-mono text-xs">{report.servicio_id.slice(0, 8)}</td><td>{formatCurrency(report.valor_base)}</td><td>{formatCurrency(report.valor_propina)}</td><td>{formatCurrency(report.valor ?? 0)}</td><td><StatusBadge status={report.estado} /></td></tr>)}</tbody></table></div>}
-  </CardContent></Card>;
+  const eligible = services.filter(
+    (item) => ESTADOS_PAGO.has(item.estado) && !reported.has(item.id),
+  );
+  return (
+    <Card id="pagos" className="scroll-mt-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Receipt className="h-5 w-5" /> Pagos
+        </CardTitle>
+        <CardDescription>Reportes de pago asociados a tus servicios.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {eligible.length > 0 && (
+          <div>
+            <div className="mb-2 text-sm font-medium">Servicios listos para generar pago</div>
+            <div className="flex flex-wrap gap-2">
+              {eligible.map((service) => (
+                <Button
+                  key={service.id}
+                  size="sm"
+                  variant="outline"
+                  disabled={generate.isPending}
+                  onClick={() =>
+                    window.confirm("¿Generar el reporte de pago de este servicio?") &&
+                    generate.mutate(service.id)
+                  }
+                >
+                  Generar {service.id.slice(0, 8)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+        {payments.isLoading ? (
+          <LoadingState label="Cargando pagos..." />
+        ) : payments.isError ? (
+          <ErrorState error={payments.error} onRetry={() => payments.refetch()} />
+        ) : reports.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aún no hay reportes de pago.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-muted-foreground">
+                  <th className="py-2">Servicio</th>
+                  <th>Valor base</th>
+                  <th>Propina</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.map((report: PaymentReport) => (
+                  <tr key={report.id} className="border-t">
+                    <td className="py-3 font-mono text-xs">{report.servicio_id.slice(0, 8)}</td>
+                    <td>{formatCurrency(report.valor_base)}</td>
+                    <td>{formatCurrency(report.valor_propina)}</td>
+                    <td>{formatCurrency(report.valor ?? 0)}</td>
+                    <td>
+                      <StatusBadge status={report.estado} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function useCompanyReport(token: string | null, services: Service[], enabled: boolean) {

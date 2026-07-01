@@ -15,14 +15,7 @@ import { Route as EmpresaRouteImport } from './routes/empresa'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTecnicosRouteImport } from './routes/_app.tecnicos'
-import { Route as AppServiciosRouteImport } from './routes/_app.servicios'
-import { Route as AppPagosRouteImport } from './routes/_app.pagos'
-import { Route as AppNotificacionesRouteImport } from './routes/_app.notificaciones'
-import { Route as AppMapaRouteImport } from './routes/_app.mapa'
-import { Route as AppEvidenciasRouteImport } from './routes/_app.evidencias'
-import { Route as AppEmpresasRouteImport } from './routes/_app.empresas'
 import { Route as AppConfiguracionRouteImport } from './routes/_app.configuracion'
-import { Route as AppAnalyticsRouteImport } from './routes/_app.analytics'
 
 const TecnicoRoute = TecnicoRouteImport.update({
   id: '/tecnico',
@@ -53,44 +46,9 @@ const AppTecnicosRoute = AppTecnicosRouteImport.update({
   path: '/tecnicos',
   getParentRoute: () => AppRoute,
 } as any)
-const AppServiciosRoute = AppServiciosRouteImport.update({
-  id: '/servicios',
-  path: '/servicios',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPagosRoute = AppPagosRouteImport.update({
-  id: '/pagos',
-  path: '/pagos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotificacionesRoute = AppNotificacionesRouteImport.update({
-  id: '/notificaciones',
-  path: '/notificaciones',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMapaRoute = AppMapaRouteImport.update({
-  id: '/mapa',
-  path: '/mapa',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEvidenciasRoute = AppEvidenciasRouteImport.update({
-  id: '/evidencias',
-  path: '/evidencias',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEmpresasRoute = AppEmpresasRouteImport.update({
-  id: '/empresas',
-  path: '/empresas',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppConfiguracionRoute = AppConfiguracionRouteImport.update({
   id: '/configuracion',
   path: '/configuracion',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -99,28 +57,14 @@ export interface FileRoutesByFullPath {
   '/empresa': typeof EmpresaRoute
   '/login': typeof LoginRoute
   '/tecnico': typeof TecnicoRoute
-  '/analytics': typeof AppAnalyticsRoute
   '/configuracion': typeof AppConfiguracionRoute
-  '/empresas': typeof AppEmpresasRoute
-  '/evidencias': typeof AppEvidenciasRoute
-  '/mapa': typeof AppMapaRoute
-  '/notificaciones': typeof AppNotificacionesRoute
-  '/pagos': typeof AppPagosRoute
-  '/servicios': typeof AppServiciosRoute
   '/tecnicos': typeof AppTecnicosRoute
 }
 export interface FileRoutesByTo {
   '/empresa': typeof EmpresaRoute
   '/login': typeof LoginRoute
   '/tecnico': typeof TecnicoRoute
-  '/analytics': typeof AppAnalyticsRoute
   '/configuracion': typeof AppConfiguracionRoute
-  '/empresas': typeof AppEmpresasRoute
-  '/evidencias': typeof AppEvidenciasRoute
-  '/mapa': typeof AppMapaRoute
-  '/notificaciones': typeof AppNotificacionesRoute
-  '/pagos': typeof AppPagosRoute
-  '/servicios': typeof AppServiciosRoute
   '/tecnicos': typeof AppTecnicosRoute
   '/': typeof AppIndexRoute
 }
@@ -130,14 +74,7 @@ export interface FileRoutesById {
   '/empresa': typeof EmpresaRoute
   '/login': typeof LoginRoute
   '/tecnico': typeof TecnicoRoute
-  '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/configuracion': typeof AppConfiguracionRoute
-  '/_app/empresas': typeof AppEmpresasRoute
-  '/_app/evidencias': typeof AppEvidenciasRoute
-  '/_app/mapa': typeof AppMapaRoute
-  '/_app/notificaciones': typeof AppNotificacionesRoute
-  '/_app/pagos': typeof AppPagosRoute
-  '/_app/servicios': typeof AppServiciosRoute
   '/_app/tecnicos': typeof AppTecnicosRoute
   '/_app/': typeof AppIndexRoute
 }
@@ -148,44 +85,17 @@ export interface FileRouteTypes {
     | '/empresa'
     | '/login'
     | '/tecnico'
-    | '/analytics'
     | '/configuracion'
-    | '/empresas'
-    | '/evidencias'
-    | '/mapa'
-    | '/notificaciones'
-    | '/pagos'
-    | '/servicios'
     | '/tecnicos'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/empresa'
-    | '/login'
-    | '/tecnico'
-    | '/analytics'
-    | '/configuracion'
-    | '/empresas'
-    | '/evidencias'
-    | '/mapa'
-    | '/notificaciones'
-    | '/pagos'
-    | '/servicios'
-    | '/tecnicos'
-    | '/'
+  to: '/empresa' | '/login' | '/tecnico' | '/configuracion' | '/tecnicos' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/empresa'
     | '/login'
     | '/tecnico'
-    | '/_app/analytics'
     | '/_app/configuracion'
-    | '/_app/empresas'
-    | '/_app/evidencias'
-    | '/_app/mapa'
-    | '/_app/notificaciones'
-    | '/_app/pagos'
-    | '/_app/servicios'
     | '/_app/tecnicos'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -241,48 +151,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTecnicosRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/servicios': {
-      id: '/_app/servicios'
-      path: '/servicios'
-      fullPath: '/servicios'
-      preLoaderRoute: typeof AppServiciosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/pagos': {
-      id: '/_app/pagos'
-      path: '/pagos'
-      fullPath: '/pagos'
-      preLoaderRoute: typeof AppPagosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/notificaciones': {
-      id: '/_app/notificaciones'
-      path: '/notificaciones'
-      fullPath: '/notificaciones'
-      preLoaderRoute: typeof AppNotificacionesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/mapa': {
-      id: '/_app/mapa'
-      path: '/mapa'
-      fullPath: '/mapa'
-      preLoaderRoute: typeof AppMapaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/evidencias': {
-      id: '/_app/evidencias'
-      path: '/evidencias'
-      fullPath: '/evidencias'
-      preLoaderRoute: typeof AppEvidenciasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/empresas': {
-      id: '/_app/empresas'
-      path: '/empresas'
-      fullPath: '/empresas'
-      preLoaderRoute: typeof AppEmpresasRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/configuracion': {
       id: '/_app/configuracion'
       path: '/configuracion'
@@ -290,38 +158,17 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppConfiguracionRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/analytics': {
-      id: '/_app/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AppAnalyticsRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
 interface AppRouteChildren {
-  AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppConfiguracionRoute: typeof AppConfiguracionRoute
-  AppEmpresasRoute: typeof AppEmpresasRoute
-  AppEvidenciasRoute: typeof AppEvidenciasRoute
-  AppMapaRoute: typeof AppMapaRoute
-  AppNotificacionesRoute: typeof AppNotificacionesRoute
-  AppPagosRoute: typeof AppPagosRoute
-  AppServiciosRoute: typeof AppServiciosRoute
   AppTecnicosRoute: typeof AppTecnicosRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAnalyticsRoute: AppAnalyticsRoute,
   AppConfiguracionRoute: AppConfiguracionRoute,
-  AppEmpresasRoute: AppEmpresasRoute,
-  AppEvidenciasRoute: AppEvidenciasRoute,
-  AppMapaRoute: AppMapaRoute,
-  AppNotificacionesRoute: AppNotificacionesRoute,
-  AppPagosRoute: AppPagosRoute,
-  AppServiciosRoute: AppServiciosRoute,
   AppTecnicosRoute: AppTecnicosRoute,
   AppIndexRoute: AppIndexRoute,
 }

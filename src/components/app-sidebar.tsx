@@ -1,10 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  Users,
-  Settings,
-  Zap,
-} from "lucide-react";
+import { LayoutDashboard, Users, Settings, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
