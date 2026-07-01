@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Loader2, LockKeyhole, Zap } from "lucide-react";
+import { Loader2, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,11 +40,15 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Zap className="h-5 w-5" />
+          <div className="flex justify-center rounded-xl bg-white p-2">
+            <img
+              src="/logo-fedetec.png"
+              alt="FEDETEC"
+              className="h-auto max-h-24 w-full max-w-[280px] object-contain"
+            />
           </div>
           <div>
-            <CardTitle>Fedetec Operations Hub</CardTitle>
+            <CardTitle>Operations Hub</CardTitle>
             <CardDescription>Ingresa con tu usuario operativo, técnico o empresa.</CardDescription>
           </div>
         </CardHeader>

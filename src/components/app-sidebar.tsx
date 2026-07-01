@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, Settings, Zap } from "lucide-react";
+import { LayoutDashboard, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -13,13 +13,14 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-          <Zap className="h-5 w-5" />
-        </div>
-        <div className="leading-tight">
-          <div className="font-semibold tracking-tight">Fedetec</div>
-          <div className="text-[11px] text-muted-foreground">Operations console</div>
+      <div className="flex h-28 flex-col items-center justify-center gap-1 border-b border-sidebar-border bg-white px-3 py-2">
+        <img
+          src="/logo-fedetec.png"
+          alt="FEDETEC"
+          className="h-auto max-h-[76px] w-full object-contain"
+        />
+        <div className="text-[10px] font-medium tracking-wide text-muted-foreground">
+          Operations Hub
         </div>
       </div>
 
